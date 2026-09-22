@@ -1,0 +1,19 @@
+HDMIRXTEST V1.1.3 — UPDATE THE GITHUB REPOSITORY
+================================================
+
+Upload the contents of this package over the repository root, preserving the
+folders, and commit them to main with this message:
+
+    V1.1.3 add native BGR3 RGB888 zero-copy 240Hz path
+
+The functional files that must be replaced are:
+
+    src/passthrough.c
+    scripts/probe-240.sh
+    scripts/diagnose.sh
+    scripts/collect-debug.sh
+    scripts/pi-cycle.sh
+    VERSION
+
+After main is updated, the Orange Pi's normal pi-cycle command fetches it
+automatically. Do not clone or run the project on Windows.
