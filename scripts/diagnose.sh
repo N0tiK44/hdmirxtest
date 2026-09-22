@@ -44,7 +44,7 @@ META="$OUTDIR/metadata.txt"
   echo "target_refresh_millihz=$TARGET_REFRESH_MILLIHZ"
 } >"$META"
 
-echo "=== hdmirxtest V1.1.1 diagnostic ==="
+echo "=== hdmirxtest V1.1.2 diagnostic ==="
 echo "One ${DURATION}-second arm; no frame drops or overlapping commits."
 
 set +e

@@ -1,6 +1,6 @@
 # New-chat handoff prompt
 
-Copy the text below into the new GPT-6 Astra discussion and attach the current hdmirxtest repository ZIP plus the latest `hdmirxtest-latest.tar.gz` result archive.
+Copy the text below into the new GPT-6 Astra discussion and attach the current hdmirxtest repository ZIP plus the latest mode-specific result archive.
 
 ---
 
@@ -58,4 +58,4 @@ Repository URL: https://github.com/N0tiK44/hdmirxtest
 ---
 
 
-V1.1 lab-build note: the next experiment is 1080p240 feasibility. The package adds downstream-EDID forwarding, a real incoming-240-Hz gate, expanded debug collection, and a Windows-controlled update/test/fetch helper. Treat the 240-Hz path as unverified until its returned archive proves the actual HDMI-RX cadence and KMS completion timing.
+V1.1.2 lab-build note: Windows duplicate mode exposed MSI-derived 240-Hz modes, while extended mode proved stock RK-UHD was limited to 60 Hz. The package now loads a reversible RK-1080P240 bridge EDID derived from the captured Zowie XL2546X EDID, then applies a real incoming-240-Hz gate. Treat the 240-Hz datapath as unverified until its returned archive proves HDMI-RX cadence and KMS completion timing.

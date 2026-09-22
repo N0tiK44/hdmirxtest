@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 VIDEO=${VIDEO:-/dev/video0}
 BACKUP_DIR=${BACKUP_DIR:-/var/tmp/hdmirx-edid-backups}
-DOWNSTREAM_EDID=${DOWNSTREAM_EDID:-}
+CUSTOM_EDID=${CUSTOM_EDID:-$ROOT/edid/rk1080p240.bin}
 
 if (( EUID != 0 )); then
   echo "Run this with sudo: sudo bash scripts/prepare-240.sh" >&2
@@ -13,81 +14,61 @@ if ! command -v v4l2-ctl >/dev/null 2>&1; then
   echo "v4l2-ctl is required. Run scripts/install-deps.sh first." >&2
   exit 2
 fi
+if [[ ! -f "$CUSTOM_EDID" ]]; then
+  echo "Bundled 1080p240 EDID is missing: $CUSTOM_EDID" >&2
+  exit 2
+fi
+if ! python3 "$ROOT/tools/build-240-edid.py" --check "$CUSTOM_EDID"; then
+  echo "Bundled 1080p240 EDID failed validation; refusing to load it." >&2
+  exit 2
+fi
 
 mkdir -p "$BACKUP_DIR"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-BACKUP="$BACKUP_DIR/rx-edid-$STAMP.bin"
-FORWARDED="$BACKUP_DIR/downstream-edid-$STAMP.bin"
+CURRENT="$BACKUP_DIR/rx-edid-current-$STAMP.bin"
+ORIGINAL="$BACKUP_DIR/rx-edid-original.bin"
+READBACK="$BACKUP_DIR/rx-edid-readback-$STAMP.bin"
 
-if v4l2-ctl -d "$VIDEO" --get-edid=pad=0,format=raw,file="$BACKUP" >/dev/null 2>&1; then
-  echo "Backed up current HDMI-RX EDID: $BACKUP"
-else
-  rm -f "$BACKUP"
-  echo "Could not save the current HDMI-RX EDID in raw form; continuing." >&2
-fi
-
-if [[ -z "$DOWNSTREAM_EDID" ]]; then
-  # Prefer a physical HDMI output (normally the Zowie on HDMI-TX).  Fall back
-  # to any connected DRM connector only if no HDMI-A EDID is available.
-  for pattern in '/sys/class/drm/card*-HDMI-A-*/status' '/sys/class/drm/card*-*/status'; do
-    for status in $pattern; do
-      [[ -f "$status" ]] || continue
-      [[ $(cat "$status" 2>/dev/null) == "connected" ]] || continue
-      candidate="${status%/status}/edid"
-      if [[ -s "$candidate" ]]; then
-        DOWNSTREAM_EDID="$candidate"
-        break 2
-      fi
-    done
-  done
-fi
-
-if [[ -n "$DOWNSTREAM_EDID" && -s "$DOWNSTREAM_EDID" ]]; then
-  cp "$DOWNSTREAM_EDID" "$FORWARDED"
-  SIZE=$(wc -c <"$FORWARDED")
-  echo "Found connected downstream display EDID: $DOWNSTREAM_EDID ($SIZE bytes)"
+if v4l2-ctl -d "$VIDEO" --get-edid=pad=0,format=raw,file="$CURRENT" >/dev/null 2>&1; then
+  SIZE=$(wc -c <"$CURRENT")
   if (( SIZE < 128 || SIZE % 128 != 0 )); then
-    echo "Downstream EDID size is invalid; refusing to forward it." >&2
-    rm -f "$FORWARDED"
-  fi
-fi
-
-if [[ -s "$FORWARDED" ]]; then
-  if command -v edid-decode >/dev/null 2>&1; then
-    echo
-    echo "Downstream EDID summary:"
-    edid-decode "$FORWARDED" 2>/dev/null | grep -E 'Display Product Name|DTD|Detailed Timing|1920x1080|239|240|Maximum TMDS|Max TMDS|SCDC' | head -n 80 || true
-    echo
-  fi
-
-  echo "Forwarding the downstream monitor EDID to HDMI-RX..."
-  if v4l2-ctl -d "$VIDEO" --set-edid=pad=0,file="$FORWARDED",format=raw; then
-    echo "Downstream EDID forwarded successfully."
-    echo "Windows should now see the downstream monitor's advertised modes."
-  else
-    echo "Direct downstream EDID forwarding failed; trying v4l2-ctl's HDMI 2.0 / 600-MHz fallback EDID." >&2
-    if v4l2-ctl --help-edid 2>&1 | grep -q 'hdmi-4k-600mhz'; then
-      v4l2-ctl -d "$VIDEO" --set-edid=pad=0,type=hdmi-4k-600mhz
-    else
-      echo "This v4l2-ctl build has no hdmi-4k-600mhz preset. Keep the saved debug output and report this result." >&2
-      exit 3
-    fi
-  fi
-else
-  echo "No usable downstream EDID was found; trying v4l2-ctl's HDMI 2.0 / 600-MHz fallback EDID."
-  if v4l2-ctl --help-edid 2>&1 | grep -q 'hdmi-4k-600mhz'; then
-    v4l2-ctl -d "$VIDEO" --set-edid=pad=0,type=hdmi-4k-600mhz
-  else
-    echo "This v4l2-ctl build has no hdmi-4k-600mhz preset. Keep the saved debug output and report this result." >&2
+    echo "Current RX EDID has an invalid size ($SIZE bytes); refusing to overwrite it." >&2
     exit 3
   fi
+  echo "Backed up current HDMI-RX EDID: $CURRENT"
+  if ! cmp -s "$CURRENT" "$CUSTOM_EDID" && [[ ! -f "$ORIGINAL" ]]; then
+    cp "$CURRENT" "$ORIGINAL"
+    echo "Saved permanent restore point: $ORIGINAL"
+  fi
+else
+  echo "Could not back up the current HDMI-RX EDID; refusing to continue." >&2
+  exit 3
 fi
 
 echo
-echo "NEXT ON WINDOWS:"
-echo "  1. Replug/disable-enable the HDMI source if Windows does not refresh the monitor modes."
-echo "  2. Select exactly 1920x1080 at 240 Hz (or the closest ~239.7/239.8-Hz entry)."
-echo "  3. Do NOT select a mode above 240 Hz even if the Zowie EDID advertises one."
-echo "  4. Then run the 240 probe/test."
+echo "Loading the Zowie-derived 1080p240 bridge EDID into HDMI-RX..."
+v4l2-ctl -d "$VIDEO" --set-edid=pad=0,file="$CUSTOM_EDID",format=raw
+
+if ! v4l2-ctl -d "$VIDEO" --get-edid=pad=0,format=raw,file="$READBACK" >/dev/null 2>&1; then
+  echo "The driver accepted the EDID command but read-back failed." >&2
+  exit 3
+fi
+if ! cmp -s "$CUSTOM_EDID" "$READBACK"; then
+  echo "EDID read-back differs from the requested bridge EDID; refusing to claim success." >&2
+  echo "Restore with: sudo bash scripts/restore-rx-edid.sh" >&2
+  exit 3
+fi
+
+echo "EDID write and exact byte-for-byte read-back succeeded."
+echo "Profile: RK-1080P240"
+echo "Preferred: 1920x1080 @ 239.964 Hz, 571.000 MHz, 8-bit"
+echo "Fallback:  1920x1080 @ 60.000 Hz"
 echo
-echo "EDID forwarding only changes source/display negotiation; it does not alter the zero-copy capture/scanout path."
+echo "NEXT ON WINDOWS 11:"
+echo "  1. Use EXTEND THESE DISPLAYS, not Duplicate."
+echo "  2. Replug or disable/re-enable the CPU/iGPU HDMI display so Windows rereads EDID."
+echo "  3. Select the new RK-1080P240 display."
+echo "  4. Select 1920x1080 at 240 Hz. Keep 8-bit SDR; do not enable HDR or VRR."
+echo "  5. Run the 240-Hz probe."
+echo
+echo "Emergency restore: sudo bash scripts/restore-rx-edid.sh"

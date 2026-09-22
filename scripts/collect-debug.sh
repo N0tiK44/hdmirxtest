@@ -25,7 +25,7 @@ run() {
 }
 
 {
-  echo "hdmirxtest V1.1.1 debug snapshot"
+  echo "hdmirxtest V1.1.2 debug snapshot"
   echo "phase=$PHASE"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "repo=$ROOT"
@@ -70,13 +70,18 @@ fi
 section "DRM / KMS"
 run sh -c 'for s in /sys/class/drm/card*-*/status; do [ -f "$s" ] || continue; echo "--- $s"; cat "$s"; done'
 run sh -c 'for m in /sys/class/drm/card*-*/modes; do [ -f "$m" ] || continue; echo "--- $m"; cat "$m"; done'
-run sh -c 'for e in /sys/class/drm/card*-*/edid; do [ -s "$e" ] || continue; echo "--- $e ($(wc -c < "$e") bytes)"; done'
+run sh -c 'for e in /sys/class/drm/card*-*/edid; do [ -e "$e" ] || continue; bytes=$(cat "$e" 2>/dev/null | wc -c); [ "$bytes" -gt 0 ] || continue; echo "--- $e ($bytes bytes)"; done'
 
 n=0
 for e in /sys/class/drm/card*-*/edid; do
-  [[ -s "$e" ]] || continue
+  [[ -e "$e" ]] || continue
+  candidate="$OUTDIR/.downstream-edid-${PHASE}-candidate.bin"
+  if ! cat "$e" >"$candidate" 2>/dev/null || [[ ! -s "$candidate" ]]; then
+    rm -f "$candidate"
+    continue
+  fi
   n=$((n+1))
-  cp "$e" "$OUTDIR/downstream-edid-${PHASE}-${n}.bin" 2>/dev/null || true
+  mv "$candidate" "$OUTDIR/downstream-edid-${PHASE}-${n}.bin"
 done
 
 if command -v modetest >/dev/null 2>&1; then

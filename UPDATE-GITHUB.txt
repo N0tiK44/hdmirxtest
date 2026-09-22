@@ -1,4 +1,4 @@
-HDMIRXTEST V1.1.1 — UPDATE THE EXISTING GITHUB REPO
+HDMIRXTEST V1.1.2 — UPDATE THE EXISTING GITHUB REPO
 ===================================================
 Target repo: https://github.com/N0tiK44/hdmirxtest
 
@@ -14,7 +14,7 @@ EASIEST RELIABLE METHOD ON WINDOWS 11
     Copy-Item "$env:USERPROFILE\Downloads\hdmirxtest-v1.1.1\*" C:\hdmirxtest -Recurse -Force
     cd C:\hdmirxtest
     git add -A
-    git commit -m "V1.1.1 simplify hdmirxtest run and debug workflow"
+    git commit -m "V1.1.2 add verified 1080p240 bridge EDID"
     git push origin main
 
 If you extracted the ZIP somewhere other than Downloads, change only the

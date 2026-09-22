@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("baseline", "debug", "probe240", "prepare240", "240")]
+    [ValidateSet("baseline", "debug", "probe240", "prepare240", "restoreedid", "240")]
     [string]$Mode = "baseline",
     [string]$PiHost = "192.168.20.35",
     [string]$PiUser = "visionseek",
@@ -25,7 +25,7 @@ if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Destination)) {
-    $Destination = Join-Path $HOME "Downloads\hdmirxtest-latest.tar.gz"
+    $Destination = Join-Path $HOME "Downloads\hdmirxtest-$Mode-latest.tar.gz"
 }
 
 $remote = "${PiUser}@${PiHost}"
@@ -61,7 +61,7 @@ $remoteRc = $LASTEXITCODE
 
 Write-Host ""
 Write-Host "Fetching result archive (also attempted after a failed 240-Hz gate)..."
-$source = "${remote}:~/hdmirxtest-latest.tar.gz"
+$source = "${remote}:~/hdmirxtest-${Mode}-latest.tar.gz"
 & scp $source $Destination
 $scpRc = $LASTEXITCODE
 

@@ -72,7 +72,7 @@ V1.1 intentionally does not change the V1.0 buffer-ownership/fence algorithm. It
 
 New measurement controls:
 
-- downstream display EDID can be forwarded directly to HDMI-RX so the Windows source sees the Zowie's real timings
+- the Zowie XL2546X EDID was recovered from the DRM connector and its 571-MHz 1080p239.964 detailed timing is now used by the reversible RK-1080P240 bridge profile
 - a pre-run gate requires HDMI-RX itself to report 1920×1080 at roughly 230–250 fps before the 240-Hz passthrough runs
 - high-rate output mode matching accepts fractional EDID refresh values within 1 Hz for targets >=120 Hz, while low-rate matching remains within 0.005 Hz
 - debug bundles now retain receiver/downstream EDIDs, V4L2 timing/capabilities, DRM state, debugfs state when available, and filtered HDMI/VOP2/fence kernel logs

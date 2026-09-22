@@ -10,9 +10,10 @@ VIDEO=${VIDEO:-/dev/video0}
 CARD=${CARD:-/dev/dri/card0}
 CONNECTOR=${CONNECTOR:-217}
 PLANE=${PLANE:-114}
-ARCHIVE=${ARCHIVE:-$HOME/hdmirxtest-latest.tar.gz}
+ARCHIVE=${ARCHIVE:-$HOME/hdmirxtest-${MODE}-latest.tar.gz}
+LEGACY_ARCHIVE=${LEGACY_ARCHIVE:-$HOME/hdmirxtest-latest.tar.gz}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-RESULT_DIR=${RESULT_DIR:-/tmp/hdmirxtest-v11-${MODE}-${STAMP}}
+RESULT_DIR=${RESULT_DIR:-/tmp/hdmirxtest-v112-${MODE}-${STAMP}}
 
 if (( EUID == 0 )); then
   echo "Run pi-cycle.sh as your normal user. It elevates only hardware-access commands." >&2
@@ -31,8 +32,8 @@ as_root() {
 }
 
 case "$MODE" in
-  baseline|debug|probe240|prepare240|240) ;;
-  *) echo "Usage: bash scripts/pi-cycle.sh [baseline|debug|probe240|prepare240|240]" >&2; exit 2 ;;
+  baseline|debug|probe240|prepare240|restoreedid|240) ;;
+  *) echo "Usage: bash scripts/pi-cycle.sh [baseline|debug|probe240|prepare240|restoreedid|240]" >&2; exit 2 ;;
 esac
 
 cd "$ROOT"
@@ -71,6 +72,14 @@ elif [[ "$MODE" == "prepare240" ]]; then
   RUN_RC=${PIPESTATUS[0]}
   set -e
   as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" after-prepare240 || true
+elif [[ "$MODE" == "restoreedid" ]]; then
+  mkdir -p "$RESULT_DIR"
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" before-restore || true
+  set +e
+  as_root env VIDEO="$VIDEO" bash "$ROOT/scripts/restore-rx-edid.sh" 2>&1 | tee "$RESULT_DIR/restore-edid.log"
+  RUN_RC=${PIPESTATUS[0]}
+  set -e
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" after-restore || true
 else
   make clean
   if ! make check; then
@@ -137,11 +146,15 @@ git log -1 --oneline --decorate >"$RESULT_DIR/git-head.txt" || true
 as_root chown -R "$(id -u):$(id -g)" "$RESULT_DIR" 2>/dev/null || true
 rm -f "$ARCHIVE"
 tar -czf "$ARCHIVE" -C "$RESULT_DIR" .
+if [[ "$LEGACY_ARCHIVE" != "$ARCHIVE" ]]; then
+  cp "$ARCHIVE" "$LEGACY_ARCHIVE"
+fi
 
 echo
 echo "============================================================"
 echo "Pi cycle complete: mode=$MODE exit=$RUN_RC"
 echo "Result archive: $ARCHIVE"
+echo "Compatibility copy: $LEGACY_ARCHIVE"
 echo "============================================================"
 echo "Send this .tar.gz back for review even if the 240-Hz gate failed."
 exit "$RUN_RC"

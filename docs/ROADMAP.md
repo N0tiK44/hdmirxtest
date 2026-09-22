@@ -8,7 +8,7 @@ The zero-copy V4L2 DMA-BUF -> DRM/KMS path and buffer-ownership rule remain the 
 
 Use the V1.1 sequence:
 
-1. forward the downstream Zowie EDID to HDMI-RX
+1. load and verify the Zowie-derived RK-1080P240 bridge EDID on HDMI-RX
 2. make Windows source 1920×1080 at ~240 Hz
 3. run `probe240`
 4. only after the gate passes, run the full `240` diagnostic

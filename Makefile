@@ -28,7 +28,8 @@ $(TARGET): $(SRC)
 
 check:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fsyntax-only $(SRC)
-	python3 -m py_compile tools/analyze.py
+	python3 -m py_compile tools/analyze.py tools/build-240-edid.py
+	python3 tools/build-240-edid.py --check edid/rk1080p240.bin
 	bash -n $(SHELL_SCRIPTS)
 
 clean:

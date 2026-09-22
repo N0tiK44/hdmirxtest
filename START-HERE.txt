@@ -18,11 +18,21 @@ Debug-only command:
 
 The result archive is:
 
-    ~/hdmirxtest-latest.tar.gz
+    ~/hdmirxtest-baseline-latest.tar.gz
 
 Windows 11 PowerShell command to copy it:
 
-    scp visionseek@192.168.20.35:~/hdmirxtest-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-latest.tar.gz"
+    scp visionseek@192.168.20.35:~/hdmirxtest-baseline-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-baseline-latest.tar.gz"
+
+For the 240-Hz experiment use EXTEND THESE DISPLAYS, then run:
+
+    RUN-240-WIZARD.cmd
+
+Emergency EDID rollback:
+
+    RUN-RESTORE-EDID.cmd
+
+See TUTORIAL.txt for the exact custom-EDID procedure and mode-specific result filenames.
 
 For the easiest Windows-controlled workflow, clone the repository once on the
 Windows host and double-click:

@@ -1,4 +1,4 @@
-# V1.1 1080p240 feasibility experiment
+# V1.1.2 custom-EDID 1080p240 feasibility experiment
 
 V1.1 keeps the V1.0 zero-copy/fence/ownership datapath intact. The new work is deliberately outside the critical frame loop except for a small high-refresh mode-selection tolerance change.
 
@@ -10,11 +10,23 @@ This is a feasibility target, not a claim of support. RK3588 documentation commo
 
 ## EDID preparation
 
-`scripts/prepare-240.sh` first backs up the HDMI-RX EDID. It then looks for a connected DRM output EDID and forwards that raw EDID to HDMI-RX. In the normal lab topology that downstream display is the Zowie, so Windows sees the Zowie's real advertised timings instead of a generic receiver identity.
+`scripts/prepare-240.sh` first backs up the HDMI-RX EDID. It then loads the bundled `edid/rk1080p240.bin` bridge profile.
 
-If forwarding fails, the script falls back to v4l2-ctl's standard `hdmi-4k-600mhz` EDID. That fallback advertises HDMI 2.0-class link capability but does not itself promise a 1080p240 detailed timing.
+The bridge profile is derived from the exact Zowie XL2546X EDID captured on the RK3588 HDMI-TX connector. It preserves the Zowie HDMI Forum 600-MHz capability block and uses the Zowie's real timing:
+
+- 1920×1080 active
+- 2080×1144 total
+- 571.000 MHz pixel clock
+- 239.964 Hz
+- 8-bit SDR
+
+It makes that timing preferred and keeps 1920×1080 at 60 Hz as the first fallback. The script validates every 128-byte checksum and verifies exact read-back from HDMI-RX.
+
+Use Windows extended-display mode. Duplicate mode can inherit the MSI's modes and is not evidence that RK-UHD advertised or accepted 240 Hz.
 
 Never select a source timing above 240 Hz during this experiment even if the downstream monitor advertises one.
+
+Rollback is always available with `bash scripts/pi-cycle.sh restoreedid` or `RUN-RESTORE-EDID.cmd`.
 
 ## 240-Hz gate
 

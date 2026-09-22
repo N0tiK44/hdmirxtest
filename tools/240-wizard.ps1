@@ -10,17 +10,19 @@ $HostCycle = Join-Path $PSScriptRoot "host-cycle.ps1"
 
 Write-Host ""
 Write-Host "=== 1080p240 LAB WIZARD ===" -ForegroundColor Cyan
-Write-Host "Step 1/2: back up the RX EDID and forward the connected Zowie EDID."
+Write-Host "Step 1/2: back up RK-UHD and load the verified RK-1080P240 bridge EDID."
 & powershell -NoProfile -ExecutionPolicy Bypass -File $HostCycle -Mode prepare240 -PiHost $PiHost -PiUser $PiUser -RemoteDir $RemoteDir -RepoUrl $RepoUrl
 if ($LASTEXITCODE -ne 0) {
-    throw "prepare240 failed. Check the downloaded hdmirxtest-latest.tar.gz before continuing."
+    throw "prepare240 failed. Check hdmirxtest-prepare240-latest.tar.gz. Use RUN-RESTORE-EDID.cmd if needed."
 }
 
 Write-Host ""
 Write-Host "NOW CHANGE THE WINDOWS CPU/iGPU HDMI OUTPUT TO:" -ForegroundColor Yellow
-Write-Host "    1920 x 1080 @ 240 Hz (or the closest ~239.7/239.8 Hz mode)"
-Write-Host "Do not choose a refresh rate above 240 Hz."
-Write-Host "If Windows did not refresh the mode list, disable/re-enable that display or replug the HDMI source cable."
+Write-Host "    EXTEND THESE DISPLAYS"
+Write-Host "    RK-1080P240: 1920 x 1080 @ 240 Hz"
+Write-Host "Keep 8-bit SDR. Do not enable HDR, VRR, or a mode above 240 Hz."
+Write-Host "If RK-1080P240 is not visible, disable/re-enable that display or replug the CPU/iGPU HDMI source cable."
+Write-Host "Emergency rollback: double-click RUN-RESTORE-EDID.cmd."
 Write-Host ""
 Read-Host "Press ENTER only after the Zowie/test output is set to 1080p240"
 
