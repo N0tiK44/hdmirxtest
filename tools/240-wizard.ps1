@@ -1,7 +1,7 @@
 param(
     [string]$PiHost = "192.168.20.35",
     [string]$PiUser = "visionseek",
-    [string]$RemoteDir = "~/src/rk3588-hdmi-lowlatency",
+    [string]$RemoteDir = "~/src/hdmirxtest",
     [string]$RepoUrl = ""
 )
 
@@ -13,7 +13,7 @@ Write-Host "=== 1080p240 LAB WIZARD ===" -ForegroundColor Cyan
 Write-Host "Step 1/2: back up the RX EDID and forward the connected Zowie EDID."
 & powershell -NoProfile -ExecutionPolicy Bypass -File $HostCycle -Mode prepare240 -PiHost $PiHost -PiUser $PiUser -RemoteDir $RemoteDir -RepoUrl $RepoUrl
 if ($LASTEXITCODE -ne 0) {
-    throw "prepare240 failed. Check the downloaded hdmirx-latest.tar.gz before continuing."
+    throw "prepare240 failed. Check the downloaded hdmirxtest-latest.tar.gz before continuing."
 }
 
 Write-Host ""

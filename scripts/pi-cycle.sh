@@ -10,18 +10,29 @@ VIDEO=${VIDEO:-/dev/video0}
 CARD=${CARD:-/dev/dri/card0}
 CONNECTOR=${CONNECTOR:-217}
 PLANE=${PLANE:-114}
-ARCHIVE=${ARCHIVE:-$HOME/hdmirx-latest.tar.gz}
+ARCHIVE=${ARCHIVE:-$HOME/hdmirxtest-latest.tar.gz}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-RESULT_DIR=${RESULT_DIR:-/tmp/hdmirx-v11-${MODE}-${STAMP}}
+RESULT_DIR=${RESULT_DIR:-/tmp/hdmirxtest-v11-${MODE}-${STAMP}}
 
 if (( EUID == 0 )); then
-  echo "Run pi-cycle.sh as your normal user. It invokes sudo only for hardware access." >&2
+  echo "Run pi-cycle.sh as your normal user. It elevates only hardware-access commands." >&2
   exit 2
 fi
 
+as_root() {
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  elif command -v doas >/dev/null 2>&1; then
+    doas "$@"
+  else
+    echo "Need sudo or doas for hardware access." >&2
+    return 127
+  fi
+}
+
 case "$MODE" in
-  baseline|probe240|prepare240|240) ;;
-  *) echo "Usage: bash scripts/pi-cycle.sh [baseline|probe240|prepare240|240]" >&2; exit 2 ;;
+  baseline|debug|probe240|prepare240|240) ;;
+  *) echo "Usage: bash scripts/pi-cycle.sh [baseline|debug|probe240|prepare240|240]" >&2; exit 2 ;;
 esac
 
 cd "$ROOT"
@@ -48,14 +59,18 @@ git switch -C "$BRANCH" "origin/$BRANCH"
 
 echo "SBC checkout synced to $(git rev-parse --short HEAD) on $BRANCH"
 
-if [[ "$MODE" == "prepare240" ]]; then
+if [[ "$MODE" == "debug" ]]; then
   mkdir -p "$RESULT_DIR"
-  sudo env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" before-prepare240 || true
+  RUN_RC=0
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" debug || RUN_RC=$?
+elif [[ "$MODE" == "prepare240" ]]; then
+  mkdir -p "$RESULT_DIR"
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" before-prepare240 || true
   set +e
-  sudo env VIDEO="$VIDEO" bash "$ROOT/scripts/prepare-240.sh" 2>&1 | tee "$RESULT_DIR/prepare-240.log"
+  as_root env VIDEO="$VIDEO" bash "$ROOT/scripts/prepare-240.sh" 2>&1 | tee "$RESULT_DIR/prepare-240.log"
   RUN_RC=${PIPESTATUS[0]}
   set -e
-  sudo env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" after-prepare240 || true
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" after-prepare240 || true
 else
   make clean
   if ! make check; then
@@ -66,12 +81,12 @@ else
   make
 
   mkdir -p "$RESULT_DIR"
-  sudo env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" pre || true
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" pre || true
 
   RUN_RC=0
   if [[ "$MODE" == "probe240" || "$MODE" == "240" ]]; then
     set +e
-    sudo env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" bash "$ROOT/scripts/probe-240.sh"
+    as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" bash "$ROOT/scripts/probe-240.sh"
     PROBE_RC=$?
     set -e
     if [[ "$MODE" == "probe240" ]]; then
@@ -89,7 +104,7 @@ else
       TARGET=59940
     fi
     set +e
-    sudo env \
+    as_root env \
       OUTDIR="$RESULT_DIR" \
       DURATION="$DURATION" \
       BUFFERS="$BUFFERS" \
@@ -103,7 +118,7 @@ else
     set -e
   fi
 
-  sudo env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" post || true
+  as_root env OUTDIR="$RESULT_DIR" VIDEO="$VIDEO" CARD="$CARD" bash "$ROOT/scripts/collect-debug.sh" post || true
 fi
 
 {
@@ -119,7 +134,7 @@ fi
 git status --short >"$RESULT_DIR/git-status-after.txt" || true
 git log -1 --oneline --decorate >"$RESULT_DIR/git-head.txt" || true
 
-sudo chown -R "$(id -u):$(id -g)" "$RESULT_DIR" 2>/dev/null || true
+as_root chown -R "$(id -u):$(id -g)" "$RESULT_DIR" 2>/dev/null || true
 rm -f "$ARCHIVE"
 tar -czf "$ARCHIVE" -C "$RESULT_DIR" .
 

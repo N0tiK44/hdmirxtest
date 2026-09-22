@@ -1,10 +1,10 @@
 param(
-    [ValidateSet("baseline", "probe240", "prepare240", "240")]
+    [ValidateSet("baseline", "debug", "probe240", "prepare240", "240")]
     [string]$Mode = "baseline",
     [string]$PiHost = "192.168.20.35",
     [string]$PiUser = "visionseek",
     [ValidatePattern("^[A-Za-z0-9_./~\-]+$")]
-    [string]$RemoteDir = "~/src/rk3588-hdmi-lowlatency",
+    [string]$RemoteDir = "~/src/hdmirxtest",
     [string]$RepoUrl = "",
     [string]$Destination = ""
 )
@@ -25,7 +25,7 @@ if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Destination)) {
-    $Destination = Join-Path $HOME "Downloads\hdmirx-latest.tar.gz"
+    $Destination = Join-Path $HOME "Downloads\hdmirxtest-latest.tar.gz"
 }
 
 $remote = "${PiUser}@${PiHost}"
@@ -49,7 +49,7 @@ bash scripts/pi-cycle.sh '$modeForShell'
 "@
 
 Write-Host ""
-Write-Host "=== RK3588 HDMI LAB ===" -ForegroundColor Cyan
+Write-Host "=== HDMIRXTEST LAB ===" -ForegroundColor Cyan
 Write-Host "Mode: $Mode"
 Write-Host "Pi:   $remote"
 Write-Host "Repo: $RepoUrl"
@@ -61,7 +61,7 @@ $remoteRc = $LASTEXITCODE
 
 Write-Host ""
 Write-Host "Fetching result archive (also attempted after a failed 240-Hz gate)..."
-$source = "${remote}:~/hdmirx-latest.tar.gz"
+$source = "${remote}:~/hdmirxtest-latest.tar.gz"
 & scp $source $Destination
 $scpRc = $LASTEXITCODE
 

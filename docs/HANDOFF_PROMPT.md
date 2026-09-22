@@ -1,6 +1,6 @@
 # New-chat handoff prompt
 
-Copy the text below into the new GPT-6 Astra discussion and attach the V1.0 repository ZIP plus the latest `hdmirx-latest.tar.gz` result archive.
+Copy the text below into the new GPT-6 Astra discussion and attach the current hdmirxtest repository ZIP plus the latest `hdmirxtest-latest.tar.gz` result archive.
 
 ---
 
@@ -53,7 +53,7 @@ Working preferences:
 
 First task: audit the attached V1.0 source and latest result archive, confirm the baseline invariants, then propose a narrowly scoped next step for inspecting or modifying the exact Rockchip DRM/VOP2 kernel path that returns `EBUSY`. Do not change the stable userspace datapath until the evidence justifies it.
 
-Repository URL: https://github.com/N0tiK44/rk3588-hdmi-lowlatency
+Repository URL: https://github.com/N0tiK44/hdmirxtest
 
 ---
 

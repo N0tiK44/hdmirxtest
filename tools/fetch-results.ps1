@@ -1,11 +1,11 @@
 param(
     [string]$PiHost = "192.168.20.35",
     [string]$PiUser = "visionseek",
-    [string]$Destination = "$HOME\Downloads\hdmirx-latest.tar.gz"
+    [string]$Destination = "$HOME\Downloads\hdmirxtest-latest.tar.gz"
 )
 
 $ErrorActionPreference = "Stop"
-$source = "${PiUser}@${PiHost}:~/hdmirx-latest.tar.gz"
+$source = "${PiUser}@${PiHost}:~/hdmirxtest-latest.tar.gz"
 
 Write-Host "Fetching $source"
 scp $source $Destination

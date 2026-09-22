@@ -1,6 +1,6 @@
-# RK3588 HDMI ultra-low-latency passthrough — V1.1 lab build
+# hdmirxtest — RK3588 HDMI ultra-low-latency passthrough — V1.1.1
 
-V1.1 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath and adds a safer 1080p240 feasibility workflow plus one-command lab automation.
+V1.1.1 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath and adds a safer 1080p240 feasibility workflow plus one-command lab automation.
 
 The critical path is still:
 
@@ -8,7 +8,7 @@ The critical path is still:
 
 There is no GStreamer pipeline, CPU colour conversion, framebuffer copy, or deliberate userspace frame queue.
 
-## What changed in V1.1
+## What changed in V1.1.1
 
 - the proven V1.0 ownership/fence path is retained
 - high-refresh EDID mode matching can accept fractional rates such as 239.760 Hz without relaxing the strict 59.940-vs-60.000 rule
@@ -18,7 +18,7 @@ There is no GStreamer pipeline, CPU colour conversion, framebuffer copy, or deli
 - the SBC update workflow automatically backs up local changes instead of stopping on a dirty worktree
 - the Windows helper can remotely update/build/test the SBC and SCP the result archive back in one command
 
-V1.1 does **not** claim that RK3588 HDMI-RX has already been proven at 1080p240. That is the experiment this build is designed to answer.
+V1.1.1 does **not** claim that RK3588 HDMI-RX has already been proven at 1080p240. That is the experiment this build is designed to answer.
 
 ## Known-good baseline configuration
 
@@ -35,21 +35,36 @@ V1.1 does **not** claim that RK3588 HDMI-RX has already been proven at 1080p240.
 
 DRM object IDs are installation-specific. The binary supports automatic discovery with ID `0`, but the scripts keep the last verified IDs as defaults.
 
-## First-time Orange Pi setup
+## Easiest start
+
+On the Orange Pi, as your normal user:
 
 ```bash
-mkdir -p ~/src
-cd ~/src
-git clone YOUR_NEW_REPOSITORY_URL rk3588-hdmi-lowlatency
-cd rk3588-hdmi-lowlatency
+mkdir -p ~/src && cd ~/src
+git clone https://github.com/N0tiK44/hdmirxtest.git
+cd hdmirxtest
 bash scripts/install-deps.sh
 bash scripts/pi-cycle.sh baseline
+```
+
+For later runs, you only need:
+
+```bash
+cd ~/src/hdmirxtest
+bash scripts/pi-cycle.sh baseline
+```
+
+For debug collection without running passthrough:
+
+```bash
+cd ~/src/hdmirxtest
+bash scripts/pi-cycle.sh debug
 ```
 
 The test creates:
 
 ```text
-~/hdmirx-latest.tar.gz
+~/hdmirxtest-latest.tar.gz
 ```
 
 ## Routine commands on the Pi
@@ -97,12 +112,14 @@ powershell -ExecutionPolicy Bypass -File .\tools\host-cycle.ps1 -Mode baseline
 or double-click one of:
 
 - `RUN-BASELINE.cmd`
+- `RUN-DEBUG.cmd` — collect diagnostics without starting passthrough
+- `FETCH-RESULTS.cmd` — copy an existing archive from the Pi
 - `RUN-240-WIZARD.cmd` — recommended 240-Hz workflow
 - `RUN-PREPARE-240.cmd`
 - `RUN-PROBE-240.cmd`
 - `RUN-240-TEST.cmd`
 
-The helper SSHes into the Pi, clones the repo there if needed, installs missing dependencies on first use, syncs it, builds/tests it, packages results, then SCPs `hdmirx-latest.tar.gz` into Windows Downloads.
+The helper SSHes into the Pi, clones the repo there if needed, installs missing dependencies on first use, syncs it, builds/tests it, packages results, then SCPs `hdmirxtest-latest.tar.gz` into Windows Downloads.
 
 Default lab values are `visionseek@192.168.20.35`; override them with `-PiUser` and `-PiHost` if needed.
 
@@ -129,7 +146,8 @@ Do not select a source refresh above 240 Hz even if the downstream EDID advertis
 
 ## Documentation
 
-- [Start here](START-HERE.txt)
+- [Simple tutorial](TUTORIAL.txt)
+- [Start here / detailed notes](START-HERE.txt)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Operations](docs/OPERATIONS.md)
 - [1080p240 experiment](docs/240HZ_EXPERIMENT.md)

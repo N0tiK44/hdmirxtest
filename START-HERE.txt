@@ -1,193 +1,44 @@
-RK3588 HDMI LOW-LATENCY V1.1 — START HERE
-==========================================
+HDMIRXTEST — START HERE
+=======================
 
-GOAL
-----
-Keep the known-good V1.0 zero-copy path, add a safe 1080p240 feasibility test,
-and make updates/results as close to one-command as possible.
+Repository:
+https://github.com/N0tiK44/hdmirxtest
 
-IMPORTANT
----------
-V1.1 DOES NOT claim that RK3588 HDMI-RX can already sustain 1080p240.
-The new 240 mode first proves the incoming HDMI signal is really ~240 fps.
-If that gate fails, it packages the debug data anyway so it can be reviewed.
+For the simplest instructions, open:
 
-The normal baseline path remains:
-HDMI-RX -> V4L2 NV24 DMA-BUF -> DRM PRIME -> native NV24 KMS plane.
-No GStreamer, no CPU colour conversion, no framebuffer copy.
+    TUTORIAL.txt
 
+The normal Orange Pi command is:
 
-A. CREATE YOUR NEW GITHUB REPOSITORY
-====================================
+    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh baseline
 
-1. Extract this ZIP on your Windows PC.
-2. Create a NEW EMPTY GitHub repository. Do not add a README/license when creating it.
-3. Open PowerShell inside the extracted rk3588-hdmi-lowlatency-v1.1 folder.
-4. Run:
+Debug-only command:
 
-   git init
-   git add .
-   git commit -m "RK3588 HDMI low-latency V1.1 lab build"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/YOUR_NEW_REPO.git
-   git push -u origin main
+    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh debug
 
-If you prefer GitHub's web uploader, upload the CONTENTS of the extracted folder,
-not the ZIP itself as one file.
+The result archive is:
 
-When the new repo is online, send its link back to ChatGPT.
+    ~/hdmirxtest-latest.tar.gz
 
+Windows 11 PowerShell command to copy it:
 
-B. FIRST-TIME SETUP ON THE ORANGE PI
-====================================
+    scp visionseek@192.168.20.35:~/hdmirxtest-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-latest.tar.gz"
 
-SSH into the Orange Pi, then:
+For the easiest Windows-controlled workflow, clone the repository once on the
+Windows host and double-click:
 
-   mkdir -p ~/src
-   cd ~/src
-   git clone https://github.com/YOUR_USERNAME/YOUR_NEW_REPO.git rk3588-hdmi-lowlatency
-   cd rk3588-hdmi-lowlatency
-   bash scripts/install-deps.sh
+    RUN-BASELINE.cmd
 
-Then test the known-good baseline:
+For debug only:
 
-   bash scripts/pi-cycle.sh baseline
+    RUN-DEBUG.cmd
 
-The command updates the repo, builds it, runs the diagnostic, gathers extra debug
-information, and creates:
+For result copy only:
 
-   ~/hdmirx-latest.tar.gz
+    FETCH-RESULTS.cmd
 
-Send that file back for review.
+For the experimental 1080p240 workflow, after the baseline passes:
 
+    RUN-240-WIZARD.cmd
 
-C. HOLY-GRAIL DAILY WORKFLOW — WINDOWS CONTROLS EVERYTHING
-==========================================================
-
-Clone the same repo ONCE on the Windows host PC:
-
-   git clone https://github.com/YOUR_USERNAME/YOUR_NEW_REPO.git C:\rk3588-hdmi-lowlatency
-   cd C:\rk3588-hdmi-lowlatency
-
-From then on you can use the included double-click files:
-
-   RUN-BASELINE.cmd       = update Pi + build + baseline test + download results
-   RUN-240-WIZARD.cmd     = RECOMMENDED: prepare EDID -> pause for Windows 240 Hz -> gated full test
-   RUN-PREPARE-240.cmd    = advanced/manual: forward the Zowie EDID to HDMI-RX
-   RUN-PROBE-240.cmd      = advanced/manual: check whether HDMI-RX is ACTUALLY receiving 1080p240
-   RUN-240-TEST.cmd       = advanced/manual: gated full 240-Hz diagnostic
-
-Defaults are currently:
-
-   Orange Pi IP:  192.168.20.35
-   Orange Pi user: visionseek
-
-If yours differ, open PowerShell and run for example:
-
-   powershell -ExecutionPolicy Bypass -File .\tools\host-cycle.ps1 -Mode baseline -PiHost 192.168.1.50 -PiUser orangepi
-
-The Windows helper automatically:
-
-   1. clones the repo on the Pi if missing
-   2. syncs the Pi checkout to GitHub
-   3. safely stashes uncommitted Pi changes instead of refusing to update
-   4. preserves divergent committed Pi work on a backup branch
-   5. installs missing build/V4L2 dependencies on first use
-   6. builds the project
-   7. runs the requested test
-   8. collects EDID/V4L2/DRM/kernel/debug data
-   9. creates ~/hdmirx-latest.tar.gz
-  10. SCPs it to your Windows Downloads folder
-
-This removes almost all manual Pi-side Git work.
-
-
-D. 1080p240 TEST SEQUENCE
-=========================
-
-Physical layout for this experiment:
-
-   Windows CPU/iGPU HDMI -> Orange Pi HDMI-RX -> Orange Pi HDMI-TX -> Zowie
-
-Keep your main monitor connected to the discrete GPU as normal.
-
-Step 1 — Zowie must be ON and connected to the Orange Pi HDMI output.
-
-EASIEST METHOD — double-click:
-
-   RUN-240-WIZARD.cmd
-
-It performs the EDID preparation, pauses while you select 1080p240 in Windows,
-and then performs the 240-Hz gate + full diagnostic automatically.
-
-MANUAL METHOD — run:
-
-   RUN-PREPARE-240.cmd
-
-This backs up the current HDMI-RX EDID and tries to copy the Zowie's REAL EDID
-from the Pi HDMI output to HDMI-RX. This is better than inventing a generic EDID.
-If forwarding fails, it falls back to v4l2-ctl's HDMI-2.0/600-MHz EDID.
-
-Step 3 — in Windows display settings for the CPU/iGPU HDMI output, select:
-
-   1920 x 1080
-   240 Hz (or the closest ~239.7 / 239.8-Hz option)
-
-DO NOT select anything above 240 Hz even if the Zowie advertises it.
-If Windows does not refresh the modes, unplug/replug the HDMI input cable or
-disable/re-enable that Windows display.
-
-Step 4 — run:
-
-   RUN-PROBE-240.cmd
-
-If the incoming HDMI timing is not confirmed around 240 fps, the script stops
-safely and still downloads the debug archive. Send that archive back.
-
-Step 5 — only when the probe passes, run:
-
-   RUN-240-TEST.cmd
-
-The passthrough then targets ~240 Hz. The C program accepts fractional high-rate
-EDID modes such as 239.760 Hz while keeping 59.940-vs-60.000 matching strict.
-
-At 240 Hz one refresh is about 4.17 ms. If the same one-refresh KMS boundary
-remains, this test should reduce that part of the latency from ~16.68 ms to
-~4.17 ms. We still need measurements to prove it.
-
-
-E. IF SOMETHING GOES WRONG
-==========================
-
-Do not delete the repo or start editing random files on the Pi.
-Run the closest matching test again and send:
-
-   ~/hdmirx-latest.tar.gz
-
-The archive now contains substantially more than before, including:
-
-   - trace.csv / analyzer report when the passthrough ran
-   - HDMI-RX timing query
-   - HDMI-RX EDID snapshot
-   - downstream/Zowie EDID snapshot
-   - DRM connector and plane information
-   - DRM debugfs state when available
-   - Rockchip HDMI/VOP2/fence kernel messages
-   - Git commit/status information
-
-To restore the most recently backed-up HDMI-RX EDID:
-
-   cd ~/src/rk3588-hdmi-lowlatency
-   sudo bash scripts/restore-rx-edid.sh
-
-
-F. ONE THING TO REMEMBER ABOUT LATENCY COMPARISONS
-==================================================
-
-Your main display is driven by the discrete GPU while the Zowie test source is
-currently driven by the CPU/iGPU. Those two display engines are not guaranteed
-to be frame-synchronised. Use slow-motion comparison as useful evidence, but do
-not automatically subtract a fixed one-frame 'PC baseline' from every result.
-
-For the cleanest future glass-to-glass comparison, drive both reference and test
-signals from outputs of the same GPU if possible.
+See TUTORIAL.txt for the full step-by-step instructions.

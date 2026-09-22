@@ -2,7 +2,7 @@
 set -u
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-OUTDIR=${OUTDIR:-/tmp/hdmirx-v11-debug}
+OUTDIR=${OUTDIR:-/tmp/hdmirxtest-v11-debug}
 VIDEO=${VIDEO:-/dev/video0}
 CARD=${CARD:-/dev/dri/card0}
 PHASE=${1:-snapshot}
@@ -25,7 +25,7 @@ run() {
 }
 
 {
-  echo "RK3588 HDMI V1.1 debug snapshot"
+  echo "hdmirxtest V1.1.1 debug snapshot"
   echo "phase=$PHASE"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "repo=$ROOT"

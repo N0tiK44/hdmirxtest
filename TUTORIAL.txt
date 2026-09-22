@@ -1,0 +1,195 @@
+HDMIRXTEST — SIMPLE RUN + DEBUG TUTORIAL
+=======================================
+Repository: https://github.com/N0tiK44/hdmirxtest
+Orange Pi default: visionseek@192.168.20.35
+Result file: hdmirxtest-latest.tar.gz
+
+THIS IS THE NORMAL WORKFLOW
+---------------------------
+Use the Orange Pi as the test machine and the Windows 11 PC as the controller.
+The Zowie remains the test monitor connected through the Orange Pi.
+
+
+1. FIRST TIME ONLY — INSTALL THE REPO ON THE ORANGE PI
+======================================================
+SSH into the Orange Pi and run these commands exactly:
+
+    mkdir -p ~/src
+    cd ~/src
+    git clone https://github.com/N0tiK44/hdmirxtest.git
+    cd hdmirxtest
+    bash scripts/install-deps.sh
+
+Do NOT run git init. The GitHub clone is already a Git repository.
+
+
+2. NORMAL BASELINE TEST ON THE ORANGE PI
+========================================
+Every time you want the normal known-good test:
+
+    cd ~/src/hdmirxtest
+    bash scripts/pi-cycle.sh baseline
+
+That ONE command automatically:
+
+    - fetches the latest hdmirxtest code from GitHub
+    - safely stashes uncommitted Pi changes
+    - preserves divergent committed Pi work on a backup branch
+    - builds the program
+    - runs the 120 second baseline diagnostic
+    - collects V4L2 / HDMI-RX / DRM / VOP2 / EDID / kernel information
+    - analyzes the timing CSV
+    - creates this file:
+
+      ~/hdmirxtest-latest.tar.gz
+
+When it finishes, send hdmirxtest-latest.tar.gz back to ChatGPT.
+
+
+3. DEBUG ONLY — IF THE VIDEO TEST WILL NOT RUN
+==============================================
+Run:
+
+    cd ~/src/hdmirxtest
+    bash scripts/pi-cycle.sh debug
+
+This does NOT start the passthrough test. It updates the repo, collects the
+hardware/software state and creates:
+
+    ~/hdmirxtest-latest.tar.gz
+
+Send that file back to ChatGPT.
+
+
+4. WINDOWS 11 POWERSHELL — COPY THE RESULT FROM THE PI
+======================================================
+Open PowerShell on the Windows 11 host PC and run:
+
+    scp visionseek@192.168.20.35:~/hdmirxtest-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-latest.tar.gz"
+
+Enter the Orange Pi password if asked.
+
+The file will be here:
+
+    C:\Users\YOUR_WINDOWS_NAME\Downloads\hdmirxtest-latest.tar.gz
+
+Upload that .tar.gz file to ChatGPT.
+
+If your Pi IP changes, replace 192.168.20.35 with the correct IP.
+
+
+5. EVEN EASIER — WINDOWS CONTROLS THE WHOLE TEST
+================================================
+FIRST TIME ONLY on Windows 11 PowerShell:
+
+    cd C:\
+    git clone https://github.com/N0tiK44/hdmirxtest.git
+    cd C:\hdmirxtest
+
+Then for a normal baseline test, either double-click:
+
+    RUN-BASELINE.cmd
+
+or run in PowerShell:
+
+    powershell -ExecutionPolicy Bypass -File .\tools\host-cycle.ps1 -Mode baseline
+
+This automatically SSHs into the Orange Pi, clones/updates hdmirxtest on the
+Pi, installs missing dependencies, builds, runs the test, packages the results,
+and copies hdmirxtest-latest.tar.gz into your Windows Downloads folder.
+
+For DEBUG ONLY, double-click:
+
+    RUN-DEBUG.cmd
+
+For COPY ONLY, double-click:
+
+    FETCH-RESULTS.cmd
+
+
+6. 1080p240 EXPERIMENT
+======================
+Do NOT start here. First prove the baseline works.
+
+When ready, the easiest 240 Hz workflow is simply:
+
+    RUN-240-WIZARD.cmd
+
+The wizard:
+
+    1. backs up the current HDMI-RX EDID
+    2. forwards the connected Zowie EDID to HDMI-RX when possible
+    3. pauses so you can select 1920x1080 @ 240 Hz in Windows
+    4. verifies the Orange Pi is actually receiving about 240 fps
+    5. only runs the full 240 Hz diagnostic if that gate passes
+    6. still creates/downloads a debug archive if the gate fails
+
+Manual 240 Hz commands on the Pi are:
+
+    cd ~/src/hdmirxtest
+    bash scripts/pi-cycle.sh prepare240
+    bash scripts/pi-cycle.sh probe240
+    bash scripts/pi-cycle.sh 240
+
+Do not select above 240 Hz for this experiment.
+
+
+7. MOST IMPORTANT COMMANDS — CHEAT SHEET
+========================================
+Orange Pi baseline:
+
+    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh baseline
+
+Orange Pi debug only:
+
+    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh debug
+
+Windows copy result:
+
+    scp visionseek@192.168.20.35:~/hdmirxtest-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-latest.tar.gz"
+
+Windows one-click baseline:
+
+    RUN-BASELINE.cmd
+
+Windows one-click debug:
+
+    RUN-DEBUG.cmd
+
+Windows one-click result fetch:
+
+    FETCH-RESULTS.cmd
+
+Windows 240 Hz wizard:
+
+    RUN-240-WIZARD.cmd
+
+
+8. IF GIT EVER LOOKS BROKEN ON THE PI
+=====================================
+Normally you should NOT need to run Git commands manually. pi-cycle.sh handles
+updates for you.
+
+To inspect it:
+
+    cd ~/src/hdmirxtest
+    git status
+    git remote -v
+    git log -1 --oneline
+
+The remote should point to:
+
+    https://github.com/N0tiK44/hdmirxtest.git
+
+Do not delete or rebuild the repository just because git status shows something.
+Run pi-cycle.sh first; it is designed to preserve local changes safely.
+
+
+9. RESULT TO SEND BACK
+======================
+The only compressed result file I normally need is:
+
+    hdmirxtest-latest.tar.gz
+
+It contains the timing trace/report plus the debug state required to decide the
+next latency experiment.

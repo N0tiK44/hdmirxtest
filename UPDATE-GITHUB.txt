@@ -1,0 +1,24 @@
+HDMIRXTEST V1.1.1 — UPDATE THE EXISTING GITHUB REPO
+===================================================
+Target repo: https://github.com/N0tiK44/hdmirxtest
+
+EASIEST RELIABLE METHOD ON WINDOWS 11
+-------------------------------------
+1. Extract hdmirxtest-v1.1.1.zip.
+2. Open PowerShell.
+3. Run:
+
+    cd C:\
+    if (Test-Path C:\hdmirxtest) { Remove-Item C:\hdmirxtest -Recurse -Force }
+    git clone https://github.com/N0tiK44/hdmirxtest.git C:\hdmirxtest
+    Copy-Item "$env:USERPROFILE\Downloads\hdmirxtest-v1.1.1\*" C:\hdmirxtest -Recurse -Force
+    cd C:\hdmirxtest
+    git add -A
+    git commit -m "V1.1.1 simplify hdmirxtest run and debug workflow"
+    git push origin main
+
+If you extracted the ZIP somewhere other than Downloads, change only the
+Copy-Item source path.
+
+After pushing, the repo root should contain TUTORIAL.txt, RUN-DEBUG.cmd and
+FETCH-RESULTS.cmd in addition to the existing project files.

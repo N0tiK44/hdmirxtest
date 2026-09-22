@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 BIN="$ROOT/rk3588-hdmi-passthrough"
-OUTDIR=${OUTDIR:-/tmp/hdmirx-v11}
+OUTDIR=${OUTDIR:-/tmp/hdmirxtest-v11}
 DURATION=${DURATION:-120}
 BUFFERS=${BUFFERS:-4}
 VIDEO=${VIDEO:-/dev/video0}
@@ -29,7 +29,7 @@ REPORT="$OUTDIR/report.txt"
 META="$OUTDIR/metadata.txt"
 
 {
-  echo "version=1.1"
+  echo "version=1.1.1"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
   echo "kernel=$(uname -r)"
@@ -44,7 +44,7 @@ META="$OUTDIR/metadata.txt"
   echo "target_refresh_millihz=$TARGET_REFRESH_MILLIHZ"
 } >"$META"
 
-echo "=== RK3588 HDMI passthrough V1.1 diagnostic ==="
+echo "=== hdmirxtest V1.1.1 diagnostic ==="
 echo "One ${DURATION}-second arm; no frame drops or overlapping commits."
 
 set +e
