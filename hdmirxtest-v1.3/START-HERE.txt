@@ -1,0 +1,34 @@
+HDMIRXTEST V1.3
+================
+
+INSTALL ON THE WORKING ZOWIE
+
+       bash TxTest.sh install
+
+V1.3 automatically tests 1080p60, 720p60, 1080p50, 720p50 and the display's
+preferred mode when those modes are present in the display EDID.
+
+TEST A TV
+
+1. Let the Zowie test finish.
+2. Run: sudo poweroff
+3. Leave HDMI-RX empty.
+4. Connect only HDMI-TX to the TV.
+5. Select that HDMI input and power on the Pi.
+6. Watch for colour bars for at least three minutes.
+7. Power off and reconnect the Zowie.
+
+Every boot is permanently saved. Zowie boots cannot overwrite TV evidence.
+
+COLLECT RESULTS ON THE ZOWIE
+
+       bash TxTest.sh history
+       bash TxTest.sh status
+       bash TxTest.sh results
+
+Result archive:
+
+       /home/visionseek/hdmirxtest-tx-history-latest.tar.gz
+
+Do not run setup.sh and do not connect HDMI-RX until direct HDMI-TX works on
+the Zowie, LG and Samsung.
