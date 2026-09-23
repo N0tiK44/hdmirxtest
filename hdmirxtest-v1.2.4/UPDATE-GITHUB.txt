@@ -1,0 +1,14 @@
+GITHUB LAYOUT FOR V1.2.4
+========================
+
+Keep README.md at the repository root.
+
+Delete the old version folder and upload this entire folder as one unit:
+
+    hdmirxtest-v1.2.4/
+
+Do not upload the individual contents of this folder into the repository root.
+The final layout must be:
+
+    README.md
+    hdmirxtest-v1.2.4/

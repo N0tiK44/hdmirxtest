@@ -1,0 +1,33 @@
+HDMIRXTEST V1.2.0 VALIDATION
+=============================
+
+Offline checks completed before packaging:
+
+PASS  All Bash scripts parse with `bash -n`.
+PASS  All Python tools compile with `python3 -m py_compile`.
+PASS  Legacy fixed rk1080p240 EDID remains 256 bytes with valid checksums.
+PASS  Automatic clone generated from the captured Zowie XL2546X EDID.
+PASS  Clone is 256 bytes and both 128-byte checksums equal zero.
+PASS  Clone preferred timing is the monitor's genuine
+      1920x1080@239.964 / 571.000-MHz DTD.
+PASS  Clone base-block digital bit depth is explicitly 8 bpc.
+PASS  CTA YCbCr 4:4:4 and 4:2:2 capability flags are cleared.
+PASS  All four safe source DTDs remain represented:
+      1920x1080@60, 1920x1080@143.981,
+      1920x1080@239.964, and 1280x960@239.841.
+PASS  The new V4L2 DV-timing calculation and source-change structures compile
+      against the container's Linux videodev2 headers with strict warnings.
+
+The container does not include libdrm development headers, so the complete
+passthrough executable cannot be linked here. `make check && make` remains the
+first-run gate on the Orange Pi, where libdrm-dev is installed by
+scripts/install-deps.sh.
+
+Hardware validation still required on the Orange Pi:
+
+1. `bash scripts/pi-cycle.sh preparemonitor`
+2. Reconnect/disable-enable the Windows HDMI source.
+3. `bash scripts/pi-cycle.sh 240`
+4. Confirm the log reports `Auto timing`, the matching target timing, and one
+   of the native BGR3/RGB888 or NV24/NV24 zero-copy mappings.
+5. Change Windows refresh once while running and confirm automatic rematch.

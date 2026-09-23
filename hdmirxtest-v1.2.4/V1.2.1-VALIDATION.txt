@@ -1,0 +1,29 @@
+HDMIRXTEST V1.2.1 VALIDATION
+=============================
+
+PASS  All Bash/OpenRC scripts parse with `bash -n`.
+PASS  All Python tools compile with `python3 -m py_compile`.
+PASS  Zowie downstream EDID produces a 256-byte, checksum-valid bridge.
+PASS  Bridge identity is isolated as RKP / RK-BRIDGE with a stable sink hash.
+PASS  Preferred timing remains the genuine 1920x1080@239.964 571-MHz DTD.
+PASS  CTA YCbCr, basic audio, HDR, VRR, DSC/FRL and extended blocks are absent.
+PASS  Base range/CVT/GTF/extra-timing descriptors are absent.
+PASS  Explicit 8-bpc field and both 128-byte checksums pass audit.
+PASS  Recovery generation is capped to RGB 8-bit 1920x1080@60.
+PASS  Simulated V4L2 setup completed generate -> audit -> write -> read-back ->
+      byte-compare -> second audit and persisted the verified candidate.
+PASS  Simulated recovery ignored the historical RX backup, installed the
+      independently generated 1080p60 profile and passed live preflight.
+
+Hardware checks required on Orange Pi 5 Plus:
+
+1. Keep Windows physically unplugged from HDMI-RX.
+2. Connect the target monitor to HDMI-TX.
+3. Run `bash scripts/pi-cycle.sh setup`.
+4. Confirm exact read-back and OpenRC loader installation.
+5. Connect Windows only after setup succeeds.
+6. Confirm Windows lists no mode above 1920x1080 or 240 Hz.
+7. Run `bash scripts/pi-cycle.sh 240` and return the result archive.
+
+The complete binary must still be built against the Orange Pi's libdrm/kernel
+headers; this container does not provide the Rockchip hardware or libdrm-dev.

@@ -1,0 +1,22 @@
+HDMIRXTEST V1.2.4 QUICK TUTORIAL
+================================
+
+FIRST TIME ONLY
+
+       cd /home/visionseek/src/hdmirxtest/hdmirxtest-v1.2.4
+       bash setup.sh
+
+Windows must be physically unplugged from HDMI-RX during setup.
+
+NORMAL USE
+
+       bash PiCycle.sh
+
+Press Ctrl+C to stop.
+
+NEW MONITOR
+
+       # Press Ctrl+C, then unplug Windows from HDMI-RX.
+       bash PiCycle.sh setup
+       # Reconnect Windows.
+       bash PiCycle.sh

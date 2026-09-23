@@ -1,0 +1,24 @@
+V1.2.4 VALIDATION
+=================
+
+Automated package validation:
+
+- All Bash scripts parse successfully with `bash -n`.
+- All Python tools compile successfully with `python3 -m py_compile`.
+- Bundled 1080p240 EDID is 256 bytes with valid checksums.
+- Monitor-clone test produces a valid 256-byte EDID with a 1920x1080@239.964
+  preferred timing, safe 1080p60 fallback and cloned Zowie identity.
+- The zero-copy C source is byte-identical to the V1.2.3 hardware path; V1.2.4
+  changes lifecycle and operator controls rather than the proven datapath.
+- The release folder contains no README.md and extracts as one directory.
+- The obsolete persistent passthrough service and launcher are absent.
+
+Hardware acceptance test on Orange Pi 5 Plus:
+
+1. HDMI-TX monitor connected; Windows HDMI-RX cable physically unplugged.
+2. Run `bash setup.sh` and require exact HDMI-RX EDID read-back success.
+3. Reconnect Windows and confirm Extend mode offers no mode above 1080p240.
+4. Run `bash PiCycle.sh`; verify video starts and follows source timing.
+5. Press Ctrl+C; verify video stops and the terminal immediately returns.
+6. Re-run `bash PiCycle.sh`; verify there is no device-busy/background-service
+   conflict.

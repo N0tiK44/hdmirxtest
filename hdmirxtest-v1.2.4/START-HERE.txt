@@ -1,0 +1,53 @@
+HDMIRXTEST V1.2.4 — START HERE
+================================
+
+FIRST INSTALL
+-------------
+
+1. Connect the monitor to Orange Pi HDMI-TX.
+2. Physically unplug the Windows cable from Orange Pi HDMI-RX.
+3. From this version directory, run exactly:
+
+       bash setup.sh
+
+4. When setup finishes, reconnect Windows to HDMI-RX and wait for detection.
+
+
+EVERYDAY USE
+------------
+
+Start video:
+
+       bash PiCycle.sh
+
+Stop video and return to the terminal:
+
+       Ctrl+C
+
+There is no background video service in V1.2.4. You do not need service-start,
+service-status, or service-stop. The safe EDID is still reloaded automatically
+at boot, but video starts only when you run PiCycle.sh.
+
+
+IF YOU CHANGE THE HDMI-TX MONITOR
+---------------------------------
+
+1. Press Ctrl+C if video is running.
+2. Physically unplug Windows from HDMI-RX.
+3. Connect the replacement monitor to HDMI-TX.
+4. Run:
+
+       bash PiCycle.sh setup
+
+5. Reconnect Windows and run:
+
+       bash PiCycle.sh
+
+
+SAFETY POLICY
+-------------
+
+The generated Windows-facing EDID clones the downstream monitor identity but
+only advertises modes in the safe intersection, capped at 1920x1080, 240 Hz,
+600 MHz pixel clock, fixed RGB 8-bit SDR. DSC, FRL, HDR, VRR/FreeSync, YCbCr,
+deep colour, 4K and refresh rates above 240 Hz are not advertised.
