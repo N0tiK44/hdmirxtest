@@ -1,4 +1,4 @@
-# V1.1.2 custom-EDID 1080p240 feasibility experiment
+# V1.1.3 native-RGB 1080p240 experiment
 
 V1.1 keeps the V1.0 zero-copy/fence/ownership datapath intact. The new work is deliberately outside the critical frame loop except for a small high-refresh mode-selection tolerance change.
 
@@ -6,7 +6,7 @@ V1.1 keeps the V1.0 zero-copy/fence/ownership datapath intact. The new work is d
 
 1920×1080×240 and 3840×2160×60 have the same active-pixel rate. A 240-Hz refresh is roughly 4.17 ms, so an architecture that remains one refresh behind becomes much more useful than the same architecture at 59.94 Hz (~16.68 ms).
 
-This is a feasibility target, not a claim of support. RK3588 documentation commonly states HDMI-RX up to 4K60, and 1080p240 must be proven on the exact board/kernel/driver.
+The first hardware run proved HDMI-RX lock at 1920×1080 239.96 Hz with a 570.988-MHz pixel clock on this exact board/kernel/driver.
 
 ## EDID preparation
 
@@ -30,10 +30,17 @@ Rollback is always available with `bash scripts/pi-cycle.sh restoreedid` or `RUN
 
 ## 240-Hz gate
 
-`scripts/probe-240.sh` queries the actual incoming HDMI timing. It requires:
+`scripts/probe-240.sh` queries the actual incoming HDMI timing and native capture format. It requires:
 
 - 1920×1080 active resolution
 - a reported frame rate between 230 and 250 fps
+- a native one-plane capture format supported by the zero-copy program: `BGR3` or `NV24`
+
+The probe deliberately does not request a different pixel format. The Rockchip vendor driver binds V4L2 capture format to the HDMI source encoding: RGB888 is exposed as `BGR3`, while YUV444 is exposed as `NV24`.
+
+## Native RGB fix
+
+The first 240-Hz run reached the target timing but exited because the older program required `NV24` while Windows transmitted RGB888. V1.1.3 accepts that native `BGR3` memory directly and describes the same byte layout to DRM as `RGB888` (`RG24`). Plane 114 advertises the required linear `RG24` format. No pixel conversion, CPU copy, GStreamer stage, or additional queue is introduced.
 
 If the gate fails, the full passthrough run is skipped. The debug bundle is still packaged so the failure can be classified as EDID/source negotiation, RX timing lock, driver rejection, or something later in the path.
 

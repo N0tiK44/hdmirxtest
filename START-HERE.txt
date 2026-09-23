@@ -1,54 +1,62 @@
-HDMIRXTEST — START HERE
-=======================
+HDMIRXTEST V1.2.0 — START HERE
+===============================
 
-Repository:
-https://github.com/N0tiK44/hdmirxtest
+All project commands run on the Orange Pi as your normal user.
+Windows only selects an ordinary extended-display mode.
 
-For the simplest instructions, open:
+ONE-TIME UPDATE
+---------------
 
-    TUTORIAL.txt
+    cd ~/src/hdmirxtest
+    bash scripts/pi-cycle.sh sync
 
-The normal Orange Pi command is:
 
-    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh baseline
+CLONE THE REAL MONITOR EDID
+---------------------------
 
-Debug-only command:
+Connect the target monitor to Orange Pi HDMI-TX, then run:
 
-    cd ~/src/hdmirxtest && bash scripts/pi-cycle.sh debug
+    bash scripts/pi-cycle.sh preparemonitor
 
-The result archive is:
+This reads the monitor EDID automatically and installs a safe HDMI-RX clone.
+The clone exposes only modes proven to be no greater than 1920x1080 at 240 Hz
+and advertises RGB 8-bit SDR. Exact EDID read-back is required before success.
 
-    ~/hdmirxtest-baseline-latest.tar.gz
+Reconnect or disable/re-enable the Windows-to-Pi HDMI display once. Use Extend,
+not Duplicate, and select any refresh rate Windows lists.
 
-Windows 11 PowerShell command to copy it:
 
-    scp visionseek@192.168.20.35:~/hdmirxtest-baseline-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-baseline-latest.tar.gz"
+FAST AUTOMATIC VIDEO
+--------------------
 
-For the 240-Hz experiment use EXTEND THESE DISPLAYS, then run:
+    bash scripts/pi-cycle.sh 240
 
-    RUN-240-WIZARD.cmd
+The `240` command is retained for compatibility, but now means automatic live
+mode. It reads the current HDMI-RX timing, selects the matching downstream
+mode, and safely restarts/rematches after a Windows refresh-rate change.
 
-Emergency EDID rollback:
+Repeat starts do not fetch Git, clean-build, probe separately, or collect a
+pre-run dump. If source files changed, only the required incremental build runs.
 
-    RUN-RESTORE-EDID.cmd
+Native zero-copy paths:
 
-See TUTORIAL.txt for the exact custom-EDID procedure and mode-specific result filenames.
+    Windows RGB 8-bit -> HDMI-RX BGR3 -> DRM RGB888
+    YUV444 fallback   -> HDMI-RX NV24 -> DRM NV24
 
-For the easiest Windows-controlled workflow, clone the repository once on the
-Windows host and double-click:
+Neither path performs CPU conversion, framebuffer copies, or GStreamer queues.
 
-    RUN-BASELINE.cmd
 
-For debug only:
+DIAGNOSTIC COMMANDS
+-------------------
 
-    RUN-DEBUG.cmd
+    bash scripts/pi-cycle.sh diagnostic
+    bash scripts/pi-cycle.sh baseline
+    bash scripts/pi-cycle.sh debug
 
-For result copy only:
 
-    FETCH-RESULTS.cmd
+EMERGENCY EDID RESTORE
+----------------------
 
-For the experimental 1080p240 workflow, after the baseline passes:
+    bash scripts/pi-cycle.sh restoreedid
 
-    RUN-240-WIZARD.cmd
-
-See TUTORIAL.txt for the full step-by-step instructions.
+Then reconnect the Windows-source HDMI cable.

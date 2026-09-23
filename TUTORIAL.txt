@@ -1,18 +1,14 @@
-HDMIRXTEST V1.1.2 — SIMPLE CUSTOM-EDID TUTORIAL
-================================================
-Repository: https://github.com/N0tiK44/hdmirxtest
-Orange Pi: visionseek@192.168.20.35
+HDMIRXTEST V1.2.0 — AUTOMATIC MONITOR EDID + FAST LIVE VIDEO
+=============================================================
 
 IMPORTANT
 ---------
-Use Windows EXTEND THESE DISPLAYS for this experiment.
-Do not use Duplicate. Duplicate mode can borrow the MSI's 240-Hz mode and does
-not prove that the Orange Pi HDMI-RX EDID supports it.
+Use Windows EXTEND THESE DISPLAYS. Do not use Duplicate.
+Run every project command below on the Orange Pi.
 
 
-1. FIRST TIME ONLY — ORANGE PI
-==============================
-SSH into the Orange Pi and run:
+1. INSTALL ONCE
+===============
 
     mkdir -p ~/src
     cd ~/src
@@ -21,141 +17,62 @@ SSH into the Orange Pi and run:
     bash scripts/install-deps.sh
 
 
-2. NORMAL 1080P60 BASELINE
-==========================
-On the Orange Pi:
+2. CLONE THE MONITOR EDID ONCE
+==============================
 
     cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh baseline
+    bash scripts/pi-cycle.sh preparemonitor
 
-Result:
+The Pi reads the EDID of the real monitor connected to HDMI-TX, removes every
+unproven mode above 1920x1080 or 240 Hz, removes HDR/deep-colour/YUV/VRR
+advertisement, and installs the verified RGB 8-bit clone into HDMI-RX.
 
-    ~/hdmirxtest-baseline-latest.tar.gz
-
-Windows PowerShell copy command:
-
-    scp visionseek@192.168.20.35:~/hdmirxtest-baseline-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-baseline-latest.tar.gz"
-
-
-3. CUSTOM 1080P240 EDID — EASIEST METHOD
-========================================
-On the Windows copy of the repo, double-click:
-
-    RUN-240-WIZARD.cmd
-
-The wizard will:
-
-    1. update the Pi from GitHub
-    2. save the current RK-UHD EDID permanently
-    3. validate the bundled custom EDID
-    4. load RK-1080P240 into the Orange Pi HDMI-RX
-    5. read the EDID back and compare every byte
-    6. pause for the Windows display change
-
-At the pause, use Windows 11:
-
-    Settings
-      -> System
-      -> Display
-      -> Extend these displays
-      -> select RK-1080P240
-      -> Advanced display
-      -> 1920 x 1080
-      -> 240 Hz
-
-Use 8-bit SDR. Leave HDR and VRR off.
-
-If Windows still shows RK-UHD or only 60 Hz, disable/re-enable Display 2 or
-unplug/replug the CPU/iGPU HDMI cable. This forces Windows to read the new EDID.
-
-Return to the wizard and press ENTER. It will probe the real HDMI-RX timing and
-only start the full 240-Hz passthrough test if the Pi reports approximately
-1920x1080 at 240 fps.
-
-Expected result files in Windows Downloads:
-
-    hdmirxtest-prepare240-latest.tar.gz
-    hdmirxtest-240-latest.tar.gz
-
-Send both files back for review. The Pi also keeps a compatibility copy named
-hdmirxtest-latest.tar.gz.
+Physically unplug/replug the Windows-to-Pi HDMI cable once, or disable/re-enable
+that Windows display. Keep Windows in Extend mode, then select any advertised
+refresh rate.
 
 
-4. MANUAL 240-HZ METHOD
-=======================
-Load and verify the custom EDID:
-
-    cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh prepare240
-
-Change Windows to extended 1920x1080 at 240 Hz as described above.
-
-Probe only:
-
-    cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh probe240
-
-If the probe confirms 1080p240, run the full test:
+3. START THE AUTOMATIC FAST PATH
+================================
 
     cd ~/src/hdmirxtest
     bash scripts/pi-cycle.sh 240
 
-Manual Windows copy commands:
+The legacy `240` name now starts automatic timing match. It does not run Git,
+a clean rebuild, a separate probe, or a pre-run debug dump, so repeat starts
+reach video as quickly as the driver and monitor can lock.
 
-    scp visionseek@192.168.20.35:~/hdmirxtest-prepare240-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-prepare240-latest.tar.gz"
+V1.2.0 accepts either native source format:
 
-    scp visionseek@192.168.20.35:~/hdmirxtest-probe240-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-probe240-latest.tar.gz"
+    RGB888 source  -> V4L2 BGR3 -> DRM RGB888/RG24
+    YUV444 source  -> V4L2 NV24 -> DRM NV24
 
-    scp visionseek@192.168.20.35:~/hdmirxtest-240-latest.tar.gz "$env:USERPROFILE\Downloads\hdmirxtest-240-latest.tar.gz"
+Both are direct DMA-BUF zero-copy paths. There is no GStreamer, CPU colour
+conversion, framebuffer copy, or deliberate extra frame queue.
+
+Result:
+
+    ~/hdmirxtest-240-latest.tar.gz
 
 
-5. EMERGENCY EDID RESTORE
-=========================
-If Windows rejects the EDID, the screen stays black, or you simply want the
-original RK-UHD profile back, double-click on Windows:
-
-    RUN-RESTORE-EDID.cmd
-
-Or run on the Orange Pi over SSH:
+4. EMERGENCY RESTORE
+====================
 
     cd ~/src/hdmirxtest
     bash scripts/pi-cycle.sh restoreedid
 
-Then disable/re-enable Display 2 or replug the CPU/iGPU HDMI cable.
-
-The restore command prefers the permanent EDID captured immediately before the
-custom profile was first loaded. A verified stock RK-UHD EDID is also bundled
-as a final recovery fallback.
+Then physically reconnect the Windows-source HDMI cable.
 
 
-6. DEBUG ONLY
-==============
-Double-click:
+5. UPDATE OR RUN DIAGNOSTICS
+============================
 
-    RUN-DEBUG.cmd
-
-Or run on the Orange Pi:
-
-    cd ~/src/hdmirxtest
+    bash scripts/pi-cycle.sh sync
+    bash scripts/pi-cycle.sh diagnostic
+    bash scripts/pi-cycle.sh baseline
     bash scripts/pi-cycle.sh debug
 
-Result:
+Results:
 
+    ~/hdmirxtest-baseline-latest.tar.gz
     ~/hdmirxtest-debug-latest.tar.gz
-
-
-7. FILES TO SEND BACK
-=====================
-For the first custom-EDID attempt, send:
-
-    hdmirxtest-prepare240-latest.tar.gz
-
-Then send either:
-
-    hdmirxtest-probe240-latest.tar.gz
-
-or, if the wizard reached the full test:
-
-    hdmirxtest-240-latest.tar.gz
-
-Also describe exactly what the Zowie displayed when 240 Hz was selected.

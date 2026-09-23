@@ -66,11 +66,32 @@ set -e
 
 if (( RC == 0 )); then
   echo >>"$OUT"
-  echo "Locking V4L2 to the detected DV timing and requesting NV24..." >>"$OUT"
-  v4l2-ctl -d "$VIDEO" --set-dv-bt-timings query >>"$OUT" 2>&1 || true
-  v4l2-ctl -d "$VIDEO" --set-fmt-video=width=1920,height=1080,pixelformat=NV24 >>"$OUT" 2>&1 || true
-  v4l2-ctl -d "$VIDEO" --get-dv-timings >>"$OUT" 2>&1 || true
-  v4l2-ctl -d "$VIDEO" --get-fmt-video >>"$OUT" 2>&1 || true
-  echo "Input timing is suitable for the experimental 240-Hz passthrough run." >>"$OUT"
+  echo "Reading the native HDMI-RX capture format without forcing a conversion..." >>"$OUT"
+  FORMAT=$(v4l2-ctl -d "$VIDEO" --get-fmt-video 2>&1)
+  FORMAT_RC=$?
+  printf '%s\n' "$FORMAT" >>"$OUT"
+
+  if (( FORMAT_RC != 0 )); then
+    echo "RESULT=CAPTURE_FORMAT_QUERY_FAILED" | tee -a "$OUT"
+    exit 4
+  fi
+
+  FOURCC=$(printf '%s\n' "$FORMAT" | sed -nE "s/.*Pixel Format[[:space:]]*:[[:space:]]*'([^']+)'.*/\1/p" | head -n1)
+  echo "capture_fourcc=${FOURCC:-unknown}" >>"$OUT"
+
+  case "$FOURCC" in
+    BGR3)
+      echo "PATH=V4L2_BGR3_TO_DRM_RGB888_ZERO_COPY" >>"$OUT"
+      ;;
+    NV24)
+      echo "PATH=V4L2_NV24_TO_DRM_NV24_ZERO_COPY" >>"$OUT"
+      ;;
+    *)
+      echo "RESULT=UNSUPPORTED_NATIVE_CAPTURE_FORMAT" | tee -a "$OUT"
+      exit 4
+      ;;
+  esac
+
+  echo "Input timing and native capture format are suitable for the 240-Hz passthrough run." >>"$OUT"
 fi
 exit "$RC"

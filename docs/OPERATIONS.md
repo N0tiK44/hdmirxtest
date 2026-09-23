@@ -1,4 +1,4 @@
-# Operations — hdmirxtest V1.1.2
+# Operations — hdmirxtest V1.2.0
 
 Repository: `https://github.com/N0tiK44/hdmirxtest`
 
@@ -12,12 +12,33 @@ cd hdmirxtest
 bash scripts/install-deps.sh
 ```
 
-## Normal test
+## Clone the connected monitor EDID
 
 ```bash
 cd ~/src/hdmirxtest
-bash scripts/pi-cycle.sh baseline
+bash scripts/pi-cycle.sh preparemonitor
 ```
+
+Reconnect the Windows HDMI source once. The clone is capped at 1920x1080 240
+Hz and advertises RGB 8-bit SDR.
+
+## Instant live path
+
+```bash
+bash scripts/pi-cycle.sh 240
+```
+
+The live path skips network sync, clean rebuild, the separate probe, and the
+pre-run debug snapshot. It incrementally builds only when required, reads the
+live HDMI-RX timing internally, and matches the HDMI-TX mode automatically.
+
+## Explicit repository update
+
+```bash
+bash scripts/pi-cycle.sh sync
+```
+
+Use `SYNC=1 bash scripts/pi-cycle.sh 240` to update and run in one command.
 
 ## Debug only
 
@@ -26,7 +47,9 @@ cd ~/src/hdmirxtest
 bash scripts/pi-cycle.sh debug
 ```
 
-Every cycle syncs the SBC checkout to `origin/main`, safely stashes uncommitted changes, preserves divergent committed state on a backup branch, and packages a mode-specific result such as `~/hdmirxtest-baseline-latest.tar.gz`. A compatibility copy remains at `~/hdmirxtest-latest.tar.gz`.
+Only `sync` or `SYNC=1` contacts Git. Every operational mode still packages a
+mode-specific result, and a compatibility copy remains at
+`~/hdmirxtest-latest.tar.gz`.
 
 ## Windows-controlled workflow
 
