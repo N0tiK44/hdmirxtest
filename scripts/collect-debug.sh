@@ -25,7 +25,7 @@ run() {
 }
 
 {
-  echo "hdmirxtest V1.1.3 debug snapshot"
+  echo "hdmirxtest V1.2.2 debug snapshot"
   echo "phase=$PHASE"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "repo=$ROOT"

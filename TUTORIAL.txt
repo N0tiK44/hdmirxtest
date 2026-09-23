@@ -1,5 +1,5 @@
-HDMIRXTEST V1.1.3 — SIMPLE PI-ONLY 240-HZ TEST
-================================================
+HDMIRXTEST V1.2.2 — MONITOR IDENTITY CLONE + FAST LIVE VIDEO
+=============================================================
 
 IMPORTANT
 ---------
@@ -17,25 +17,33 @@ Run every project command below on the Orange Pi.
     bash scripts/install-deps.sh
 
 
-2. LOAD THE 240-HZ EDID
-=======================
+2. CLONE THE MONITOR EDID ONCE
+==============================
 
     cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh prepare240
+    bash scripts/pi-cycle.sh setup
 
-Wait for exact EDID read-back success. Physically unplug/replug the HDMI cable
-from the Windows CPU/iGPU to the Orange Pi. In the ordinary Windows Display
-Settings GUI, keep extended mode and select RK-1080P240 at 1920x1080 240 Hz.
-Keep 8-bit SDR, HDR off, and VRR off for this test.
+PHYSICALLY UNPLUG WINDOWS FROM HDMI-RX FIRST. The Pi reads the EDID of the real
+monitor connected to HDMI-TX, removes every
+unproven mode above 1920x1080 or 240 Hz, removes HDR/deep-colour/YUV/VRR
+advertisement, and installs the verified RGB 8-bit clone into HDMI-RX.
+
+Physically unplug/replug the Windows-to-Pi HDMI cable once, or disable/re-enable
+that Windows display. Keep Windows in Extend mode, then select any advertised
+refresh rate.
 
 
-3. RUN THE FIXED 240-HZ PATH
-============================
+3. START THE AUTOMATIC FAST PATH
+================================
 
     cd ~/src/hdmirxtest
     bash scripts/pi-cycle.sh 240
 
-V1.1.3 automatically accepts either native source format:
+The legacy `240` name now starts automatic timing match. It does not run Git,
+a clean rebuild, a separate probe, or a pre-run debug dump, so repeat starts
+reach video as quickly as the driver and monitor can lock.
+
+V1.2.2 accepts either native source format:
 
     RGB888 source  -> V4L2 BGR3 -> DRM RGB888/RG24
     YUV444 source  -> V4L2 NV24 -> DRM NV24
@@ -52,14 +60,20 @@ Result:
 ====================
 
     cd ~/src/hdmirxtest
+    # Unplug Windows from HDMI-RX first
     bash scripts/pi-cycle.sh restoreedid
+
+Recovery installs an audited RGB 8-bit 1080p60 EDID. It does not restore the
+old stock/original EDID or any unaudited historical backup.
 
 Then physically reconnect the Windows-source HDMI cable.
 
 
-5. OPTIONAL BASELINE OR DEBUG
-=============================
+5. UPDATE OR RUN DIAGNOSTICS
+============================
 
+    bash scripts/pi-cycle.sh sync
+    bash scripts/pi-cycle.sh diagnostic
     bash scripts/pi-cycle.sh baseline
     bash scripts/pi-cycle.sh debug
 

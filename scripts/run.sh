@@ -9,8 +9,9 @@ VIDEO=${VIDEO:-/dev/video0}
 CARD=${CARD:-/dev/dri/card0}
 CONNECTOR=${CONNECTOR:-217}
 PLANE=${PLANE:-114}
-TARGET_REFRESH_MILLIHZ=${TARGET_REFRESH_MILLIHZ:-59940}
+TARGET_REFRESH_MILLIHZ=${TARGET_REFRESH_MILLIHZ:-auto}
 CSV=${CSV:-/tmp/hdmirx-live.csv}
+AUTO_RESTART=${AUTO_RESTART:-1}
 
 if (( EUID != 0 )); then
   echo "Run this script with sudo." >&2
@@ -26,12 +27,41 @@ if [[ "$DURATION" == 0 ]]; then
   DURATION=2147483647
 fi
 
-exec "$BIN" \
-  --video "$VIDEO" \
-  --card "$CARD" \
-  --connector "$CONNECTOR" \
-  --plane "$PLANE" \
-  --seconds "$DURATION" \
-  --buffers "$BUFFERS" \
-  --target-refresh-millihz "$TARGET_REFRESH_MILLIHZ" \
+ARGS=(
+  --video "$VIDEO"
+  --card "$CARD"
+  --connector "$CONNECTOR"
+  --plane "$PLANE"
+  --seconds "$DURATION"
+  --buffers "$BUFFERS"
   --csv "$CSV"
+)
+
+if [[ "$TARGET_REFRESH_MILLIHZ" == auto ]]; then
+  ARGS+=(--auto-refresh)
+else
+  ARGS+=(--target-refresh-millihz "$TARGET_REFRESH_MILLIHZ")
+fi
+
+RELOCK_TRIES=0
+while :; do
+  set +e
+  "$BIN" "${ARGS[@]}"
+  RC=$?
+  set -e
+
+  if (( AUTO_RESTART == 1 && RC == 75 )); then
+    echo "Input timing changed; rematching HDMI output..." >&2
+    RELOCK_TRIES=40
+    sleep 0.05
+    continue
+  fi
+
+  if (( AUTO_RESTART == 1 && RELOCK_TRIES > 0 && RC == 1 )); then
+    RELOCK_TRIES=$((RELOCK_TRIES - 1))
+    sleep 0.05
+    continue
+  fi
+
+  exit "$RC"
+done

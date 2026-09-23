@@ -1,29 +1,58 @@
-HDMIRXTEST V1.1.3 — START HERE
+HDMIRXTEST V1.2.2 — MONITOR IDENTITY BRIDGE
 ================================
 
-All project commands run on the Orange Pi.
-Windows only selects the detected display mode in the normal Display Settings GUI.
+PHYSICAL SETUP BEFORE RUNNING ANY EDID COMMAND
+----------------------------------------------
 
-Repository:
-https://github.com/N0tiK44/hdmirxtest
+    HDMI-TX -> target monitor: CONNECTED
+    Windows/GPU -> HDMI-RX:    PHYSICALLY UNPLUGGED
 
-After V1.1.3 is uploaded to main, run on the Orange Pi:
+Do not change HDMI-RX EDID while Windows is connected. V1.2.2 checks for an
+active HDMI-RX source and refuses the write if one is detected.
 
-    cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh prepare240
 
-Physically reconnect the Windows-source HDMI cable, use extended-display mode,
-and select 1920x1080 at 240 Hz. Then run on the Orange Pi:
+ONE-TIME BRIDGE SETUP
+---------------------
+
+    cd /home/visionseek/src/hdmirxtest
+    bash scripts/pi-cycle.sh setup
+
+Setup reads the EDID only from the monitor connected to HDMI-TX and computes:
+
+    downstream monitor modes
+        intersected with RK3588-compatible modes
+        capped at 1920x1080
+        capped at 240 Hz
+        capped at 600 MHz pixel clock
+        fixed RGB 8-bit SDR
+
+DSC, FRL, HDR, VRR/FreeSync, YCbCr, deep colour, 4K modes, >240-Hz modes and
+unknown timing blocks are not exposed to Windows. The bridge uses its own
+real downstream manufacturer/product/serial/name identity. Unsafe timing and
+signal capabilities are filtered without replacing the monitor identity.
+
+On Alpine/OpenRC, setup also installs an early-boot loader for the verified
+bridge EDID.
+
+
+CONNECT WINDOWS AND START VIDEO
+-------------------------------
+
+Only after setup reports exact read-back success, connect the Windows HDMI
+cable to HDMI-RX. Use Extend mode and select any mode Windows offers.
 
     bash scripts/pi-cycle.sh 240
 
-Result:
+`240` is the compatibility name for automatic live mode. The program reads the
+actual HDMI-RX timing and matches HDMI-TX automatically.
 
-    ~/hdmirxtest-240-latest.tar.gz
 
-Emergency EDID rollback:
+SAFE RECOVERY
+-------------
+
+First physically unplug Windows from HDMI-RX, then run:
 
     bash scripts/pi-cycle.sh restoreedid
 
-V1.1.3 accepts the actual 240-Hz RGB input as native V4L2 BGR3 and scans it
-out as DRM RGB888/RG24 without a conversion, CPU copy, or extra queue.
+This installs an audited RGB 8-bit 1080p60 recovery profile. It never restores
+the old stock RK-UHD EDID or an unaudited historical backup.

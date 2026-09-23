@@ -10,7 +10,7 @@ VIDEO=${VIDEO:-/dev/video0}
 CARD=${CARD:-/dev/dri/card0}
 CONNECTOR=${CONNECTOR:-217}
 PLANE=${PLANE:-114}
-TARGET_REFRESH_MILLIHZ=${TARGET_REFRESH_MILLIHZ:-59940}
+TARGET_REFRESH_MILLIHZ=${TARGET_REFRESH_MILLIHZ:-auto}
 
 if (( EUID != 0 )); then
   echo "Run this script with sudo." >&2
@@ -29,7 +29,7 @@ REPORT="$OUTDIR/report.txt"
 META="$OUTDIR/metadata.txt"
 
 {
-  echo "version=1.1.3"
+  echo "version=1.2.2"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "commit=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
   echo "kernel=$(uname -r)"
@@ -44,10 +44,17 @@ META="$OUTDIR/metadata.txt"
   echo "target_refresh_millihz=$TARGET_REFRESH_MILLIHZ"
 } >"$META"
 
-echo "=== hdmirxtest V1.1.3 diagnostic ==="
+echo "=== hdmirxtest V1.2.2 diagnostic ==="
 echo "One ${DURATION}-second arm; no frame drops or overlapping commits."
 
 set +e
+TARGET_ARGS=()
+if [[ "$TARGET_REFRESH_MILLIHZ" == auto ]]; then
+  TARGET_ARGS+=(--auto-refresh)
+else
+  TARGET_ARGS+=(--target-refresh-millihz "$TARGET_REFRESH_MILLIHZ")
+fi
+
 "$BIN" \
   --video "$VIDEO" \
   --card "$CARD" \
@@ -55,7 +62,7 @@ set +e
   --plane "$PLANE" \
   --seconds "$DURATION" \
   --buffers "$BUFFERS" \
-  --target-refresh-millihz "$TARGET_REFRESH_MILLIHZ" \
+  "${TARGET_ARGS[@]}" \
   --phase-profile \
   --window-profile \
   --csv "$CSV" 2>&1 | tee "$LOG"

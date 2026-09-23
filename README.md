@@ -1,6 +1,61 @@
-# hdmirxtest — RK3588 HDMI ultra-low-latency passthrough — V1.1.3
+# hdmirxtest — RK3588 HDMI ultra-low-latency passthrough — V1.2.2
 
-V1.1.3 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath, keeps the verified reversible 1080p240 bridge EDID, and adds the native RGB capture path proven necessary by the first real 240-Hz run.
+V1.2.2 is both a downstream-monitor impersonator and a capacity-limited HDMI
+bridge. It copies the HDMI-TX sink's manufacturer, product, serial and monitor
+name, then advertises only the timing/signal intersection supported by that
+sink and the proven RK3588 path. It refuses to rewrite EDID while an HDMI-RX
+source is active.
+
+## V1.2.2 safe workflow
+
+Physically unplug the Windows/motherboard HDMI cable from HDMI-RX. Leave the
+real output monitor connected to HDMI-TX, then run:
+
+```bash
+bash scripts/pi-cycle.sh setup
+```
+
+Reconnect or disable/re-enable the Windows-to-HDMI-RX source so Windows reads
+the new EDID. Start passthrough with:
+
+```bash
+bash scripts/pi-cycle.sh 240
+```
+
+Despite the legacy command name, `240` is now an alias for the automatic live
+path. It reads the current HDMI-RX timing and selects the matching downstream
+mode at any advertised rate up to the hard ceiling. If Windows changes timing,
+the wrapper tears down safely and rematches automatically.
+
+The fast path performs only an incremental build when source code changed. It
+does not contact Git or collect large diagnostics before video. Use this when
+an update is wanted:
+
+```bash
+bash scripts/pi-cycle.sh sync
+```
+
+Or update and then run in one invocation:
+
+```bash
+SYNC=1 bash scripts/pi-cycle.sh 240
+```
+
+The generated EDID preserves the sink identity and only those sink timings that can be proved to be no
+greater than 1920x1080 at 240 Hz and 600 MHz pixel clock. It advertises fixed
+RGB 8-bit SDR and removes DSC, FRL, YCbCr, deep-colour, HDR, VRR/FreeSync and
+unknown timing-bearing blocks. Unsupported or unknown timings fail closed.
+
+The main monitor may independently use DSC, HDR, or FreeSync. HDMI outputs
+negotiate separately; those features are intentionally not advertised on the
+Orange Pi bridge output.
+
+`restoreedid` no longer restores `rx-edid-original.bin`, the stock `RK-UHD`
+profile, or any historical backup. It installs an audited RGB 8-bit 1080p60
+recovery EDID and also requires HDMI-RX to be physically disconnected.
+
+V1.2.2 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath and the native
+RGB capture path proven by the first real 240-Hz run.
 
 The critical path is still:
 
@@ -22,7 +77,8 @@ There is no GStreamer pipeline, CPU colour conversion, framebuffer copy, or deli
 - `prepare240` loads `edid/rk1080p240.bin`, derived from the captured Zowie XL2546X EDID
 - 1920×1080 at 239.964 Hz / 571 MHz is the preferred timing; 1080p60 is the first fallback
 - the EDID is validated before use and read back byte-for-byte after programming
-- `restoreedid` and `RUN-RESTORE-EDID.cmd` safely restore the pre-experiment RX EDID
+- historical note: older releases restored the pre-experiment RX EDID; V1.2.1
+  intentionally replaces that behavior with an audited 1080p60 recovery EDID
 - `probe240` refuses to run the full 240-Hz test unless HDMI-RX is actually reporting 1920×1080 at roughly 240 fps
 - sysfs EDIDs are copied by reading their bytes instead of trusting their reported pseudo-file size
 - each test mode keeps its own result archive so baseline and debug no longer overwrite each other
@@ -55,14 +111,14 @@ mkdir -p ~/src && cd ~/src
 git clone https://github.com/N0tiK44/hdmirxtest.git
 cd hdmirxtest
 bash scripts/install-deps.sh
-bash scripts/pi-cycle.sh baseline
+bash scripts/pi-cycle.sh setup
 ```
 
-For later runs, you only need:
+Reconnect the Windows HDMI source once. For later runs, you only need:
 
 ```bash
 cd ~/src/hdmirxtest
-bash scripts/pi-cycle.sh baseline
+bash scripts/pi-cycle.sh 240
 ```
 
 For debug collection without running passthrough:
@@ -82,19 +138,19 @@ Each mode uses its own filename. A compatibility copy is also kept at `~/hdmirxt
 
 ## Routine commands on the Pi
 
-Known-good baseline:
+Fast automatic live video:
 
 ```bash
-bash scripts/pi-cycle.sh baseline
+bash scripts/pi-cycle.sh 240
 ```
 
-Prepare EDID for 240-Hz negotiation:
+Automatically clone the connected monitor EDID with the bridge ceiling:
 
 ```bash
-bash scripts/pi-cycle.sh prepare240
+bash scripts/pi-cycle.sh setup
 ```
 
-Restore the original RX EDID:
+Install the audited 1080p60 emergency recovery EDID:
 
 ```bash
 bash scripts/pi-cycle.sh restoreedid
@@ -106,10 +162,10 @@ Probe only:
 bash scripts/pi-cycle.sh probe240
 ```
 
-Full 240-Hz diagnostic, but only after the input gate passes:
+Full automatic diagnostic:
 
 ```bash
-bash scripts/pi-cycle.sh 240
+bash scripts/pi-cycle.sh diagnostic
 ```
 
 The old command remains compatible:
@@ -120,9 +176,13 @@ bash scripts/pi-update-and-diagnose.sh
 
 It now delegates to `pi-cycle.sh baseline`.
 
-## Simplest Pi-only 240-Hz workflow
+## Simplest Pi-only automatic workflow
 
-Run `prepare240` on the Orange Pi, physically reconnect the Windows-source HDMI cable so it rereads the EDID, select 240 Hz in the ordinary Windows display GUI, then run `240` on the Orange Pi. No Windows repository, PowerShell controller, or `.cmd` file is required.
+Run `setup` on the Orange Pi with HDMI-RX physically disconnected, then
+reconnect the Windows-source
+HDMI cable so it rereads the EDID, select any offered refresh rate, then run
+`240` on the Orange Pi. No Windows repository, PowerShell controller, or `.cmd`
+file is required.
 
 ## Why the 240-Hz experiment matters
 
@@ -136,7 +196,19 @@ Windows duplicate mode merges/intersects display behavior and can misleadingly e
 
 The script refuses to proceed without a backup, validates the EDID checksums/timings, and verifies exact read-back after programming. It does not fall back to the generic `hdmi-4k-600mhz` preset because that preset does not advertise the required 1080p240 detailed timing.
 
-Do not select a source refresh above 240 Hz even if the downstream EDID advertises one.
+`setup`, `preparemonitor`, and the legacy `prepare240` spelling now all use the
+same safe connected-monitor intersection pipeline.
+
+Before every `live`/`240` start, the fast preflight compares the current
+HDMI-TX EDID with the monitor used by `setup`. If a different monitor is
+connected, its filtered profile is staged automatically. If Windows is still
+active on HDMI-RX, the program stops and requests one controlled unplug, setup,
+and reconnect cycle instead of changing EDID under a live source.
+
+Setup writes `/var/lib/hdmirxtest/bridge-manifest.json` with SHA-256 hashes,
+source/bridge identities, the hard ceiling and deliberately removed features.
+The live path requires the HDMI-RX read-back to match the installed bridge EDID
+byte-for-byte before video starts.
 
 ## Safety rules
 
@@ -145,7 +217,8 @@ Do not select a source refresh above 240 Hz even if the downstream EDID advertis
 - only the previously displayed buffer is returned after the next KMS completion
 - do not add GStreamer, CPU conversion, framebuffer copies, or a deliberate extra queue
 - do not reintroduce the retired frame-dropping experiment
-- the 240-Hz path is experimental until the debug data proves each stage
+- each newly cloned monitor and timing remains hardware-dependent and must be
+  verified; the known Zowie 1080p239.96 BGR3 path is already proven
 
 ## Documentation
 
@@ -156,3 +229,6 @@ Do not select a source refresh above 240 Hz even if the downstream EDID advertis
 - [1080p240 experiment](docs/240HZ_EXPERIMENT.md)
 - [Research findings](docs/RESEARCH_FINDINGS.md)
 - [Roadmap](docs/ROADMAP.md)
+- [V1.2.0 changelog](docs/V1.2_CHANGELOG.md)
+- [V1.2.1 safety changelog](docs/V1.2.1_CHANGELOG.md)
+- [V1.2.2 identity bridge changelog](docs/V1.2.2_CHANGELOG.md)

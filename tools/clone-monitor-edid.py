@@ -14,11 +14,26 @@ format accepted by the Rockchip HDMI-RX EDID ioctl on the tested 6.1 kernel.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 
 HEADER = bytes.fromhex("00ffffffffffff00")
+
+
+def encode_manufacturer(name: str) -> bytes:
+    if len(name) != 3 or not name.isalpha():
+        raise ValueError("manufacturer must contain exactly three letters")
+    a, b, c = (ord(ch.upper()) - 64 for ch in name)
+    return ((a << 10) | (b << 5) | c).to_bytes(2, "big")
+
+
+def descriptor_name(name: str) -> bytes:
+    payload = (name[:12] + "\n").encode("ascii")[:13].ljust(13, b" ")
+    return b"\x00\x00\x00\xfc\x00" + payload
 
 # CTA VICs whose geometry is known to remain inside 1920x1080.  VICs 86-92
 # are 2560x1080, 93-107 are UHD/DCI-4K, 113+ are 2560/3840/4096/5120/7680
@@ -157,9 +172,53 @@ def dummy_descriptor() -> bytes:
     return b"\x00\x00\x00\x10\x00" + bytes(13)
 
 
-def sanitize_base(source: bytes, limits: Limits) -> tuple[bytearray, list[bytes]]:
+def descriptor_text(descriptor: bytes) -> str | None:
+    if len(descriptor) != 18 or descriptor[:3] != b"\x00\x00\x00":
+        return None
+    if descriptor[3] not in (0xFC, 0xFF):
+        return None
+    return descriptor[5:18].split(b"\n", 1)[0].decode("ascii", "replace").strip()
+
+
+def manufacturer_name(raw: bytes) -> str:
+    value = int.from_bytes(raw, "big")
+    chars = [(value >> 10) & 31, (value >> 5) & 31, value & 31]
+    if any(value < 1 or value > 26 for value in chars):
+        return "???"
+    return "".join(chr(value + 64) for value in chars)
+
+
+def identity(data: bytes) -> dict[str, object]:
+    descriptors = [data[o:o + 18] for o in range(54, 126, 18)]
+    texts = {
+        d[3]: descriptor_text(d)
+        for d in descriptors
+        if len(d) == 18 and d[:3] == b"\x00\x00\x00" and d[3] in (0xFC, 0xFF)
+    }
+    return {
+        "manufacturer": manufacturer_name(data[8:10]),
+        "product_code": int.from_bytes(data[10:12], "little"),
+        "serial_number": int.from_bytes(data[12:16], "little"),
+        "monitor_name": texts.get(0xFC),
+        "serial_text": texts.get(0xFF),
+        "week": data[16],
+        "year": 1990 + data[17],
+    }
+
+
+def sanitize_base(
+    source: bytes, limits: Limits, identity_mode: str
+) -> tuple[bytearray, list[bytes]]:
     base = bytearray(source[:128])
     sanitize_standard_timings(base, limits)
+
+    if identity_mode == "isolated":
+        # Recovery/troubleshooting identity.  Normal setup uses clone mode and
+        # keeps the downstream manufacturer, product and serial bytes exactly.
+        source_crc = zlib.crc32(source) & 0xFFFFFFFF
+        base[8:10] = encode_manufacturer("RKP")
+        base[10:12] = (0x1202).to_bytes(2, "little")
+        base[12:16] = source_crc.to_bytes(4, "little")
 
     # EDID 1.4 digital-input bit depth 010 means 8 bits per primary colour.
     if base[20] & 0x80:
@@ -167,8 +226,24 @@ def sanitize_base(source: bytes, limits: Limits) -> tuple[bytearray, list[bytes]
 
     descriptors = [bytes(base[o:o + 18]) for o in range(54, 126, 18)]
     allowed_dtds = [d for d in descriptors if dtd_allowed(d, limits)]
-    monitor_descriptors = [d for d in descriptors if dtd_values(d) is None]
-    packed = (allowed_dtds + monitor_descriptors)[:4]
+    # Do not carry range-limit, CVT/GTF, extra-standard-timing or arbitrary
+    # monitor descriptors into the bridge: Windows could use them to infer a
+    # mode that was not explicitly accepted by the cap audit.
+    if identity_mode == "clone":
+        # Preserve the monitor name and textual serial.  Range-limit, CVT/GTF
+        # and extra-timing descriptors are deliberately excluded because they
+        # let a source synthesize modes outside the audited set.
+        monitor_descriptors = [
+            d for d in descriptors
+            if d[:3] == b"\x00\x00\x00" and d[3] in (0xFC, 0xFF)
+        ]
+    else:
+        monitor_descriptors = [descriptor_name("RK-BRIDGE")]
+    # Identity text has priority over secondary timings.  Keep at least the
+    # real monitor name/serial when present; the preferred safe DTD remains in
+    # the first slot and CTA can carry additional accepted timings.
+    monitor_descriptors = monitor_descriptors[:2]
+    packed = allowed_dtds[:4 - len(monitor_descriptors)] + monitor_descriptors
     packed += [dummy_descriptor()] * (4 - len(packed))
     for slot, descriptor in enumerate(packed):
         offset = 54 + slot * 18
@@ -177,7 +252,7 @@ def sanitize_base(source: bytes, limits: Limits) -> tuple[bytearray, list[bytes]
     # Exactly one sanitized CTA extension is emitted below.
     base[126] = 1
     fix_checksum(base)
-    return base, allowed_dtds
+    return base, [d for d in packed if dtd_values(d) is not None]
 
 
 def parse_cta_blocks(extension: bytes) -> tuple[list[bytes], list[bytes]]:
@@ -247,8 +322,10 @@ def sanitize_data_block(block: bytes, limits: Limits) -> bytes | None:
     payload = block[1:]
     if tag == 2:
         return sanitize_video_block(block, limits)
-    if tag in (1, 4):  # Audio and speaker allocation do not advertise video modes.
-        return block
+    if tag in (1, 4):
+        # The current zero-copy program forwards video only.  Do not advertise
+        # an HDMI audio endpoint that the bridge does not reproduce.
+        return None
     if tag == 3 and len(payload) >= 3:
         oui = payload[:3]
         if oui == b"\x03\x0c\x00":
@@ -289,7 +366,7 @@ def build_cta(source: bytes, limits: Limits, base_dtds: list[bytes]) -> tuple[by
             continue
         revision = max(revision, extension[1])
         underscan |= bool(extension[3] & 0x80)
-        basic_audio |= bool(extension[3] & 0x40)
+        # Audio is intentionally not advertised by this video-only bridge.
         blocks, dtds = parse_cta_blocks(extension)
         for block in blocks:
             cleaned = sanitize_data_block(block, limits)
@@ -342,9 +419,9 @@ def validate_source(data: bytes) -> None:
             raise ValueError(f"EDID block {index} checksum is invalid")
 
 
-def build_clone(source: bytes, limits: Limits) -> tuple[bytes, int, int]:
+def build_clone(source: bytes, limits: Limits, identity_mode: str) -> tuple[bytes, int, int]:
     validate_source(source)
-    base, base_dtds = sanitize_base(source, limits)
+    base, base_dtds = sanitize_base(source, limits, identity_mode)
     cta, cta_dtds = build_cta(source, limits, base_dtds)
 
     candidates = unique(base_dtds + cta_dtds)
@@ -378,6 +455,63 @@ def build_clone(source: bytes, limits: Limits) -> tuple[bytes, int, int]:
     return output, len(base_dtds), len(cta_dtds)
 
 
+def audit_clone(
+    data: bytes, limits: Limits, source: bytes | None = None, identity_mode: str = "clone"
+) -> None:
+    validate_source(data)
+    if len(data) != 256 or data[126] != 1 or data[128] != 0x02:
+        raise ValueError("bridge EDID must be exactly two blocks with one CTA extension")
+    if identity_mode == "isolated" and data[8:10] != encode_manufacturer("RKP"):
+        raise ValueError("recovery EDID does not have the isolated RKP identity")
+    if source is not None and identity_mode == "clone":
+        if data[8:16] != source[8:16]:
+            raise ValueError("bridge manufacturer/product/serial identity differs from sink")
+        source_identity = identity(source)
+        bridge_identity = identity(data)
+        for key in ("monitor_name", "serial_text"):
+            if source_identity[key] and bridge_identity[key] != source_identity[key]:
+                raise ValueError(f"bridge {key} differs from sink")
+    if data[20] & 0x70 != 0x20:
+        raise ValueError("bridge EDID is not explicitly limited to 8 bpc")
+    if data[131] & 0x30:
+        raise ValueError("bridge CTA block still advertises YCbCr")
+    if data[131] & 0x40:
+        raise ValueError("video-only bridge still advertises basic audio")
+
+    for offset in range(38, 54, 2):
+        values = standard_timing_values(data[offset:offset + 2], data[19])
+        if values and (
+            values[0] > limits.width
+            or values[1] > limits.height
+            or values[2] > limits.refresh
+        ):
+            raise ValueError(f"unsafe standard timing remains: {values}")
+
+    for offset in range(54, 126, 18):
+        descriptor = data[offset:offset + 18]
+        values = dtd_values(descriptor)
+        if values is not None and not dtd_allowed(descriptor, limits):
+            raise ValueError(f"unsafe base detailed timing remains at byte {offset}")
+        if values is None and descriptor[:3] == b"\x00\x00\x00" and descriptor[3] not in (0x10, 0xFC, 0xFF):
+            raise ValueError(f"unapproved base monitor descriptor remains at byte {offset}")
+
+    blocks, dtds = parse_cta_blocks(data[128:256])
+    for block in blocks:
+        tag = block[0] >> 5
+        if tag == 2:
+            for svd in block[1:]:
+                vic = svd & 0x7F
+                if vic not in SAFE_CTA_VICS or CTA_VIC_RATE.get(vic, 999) > limits.refresh:
+                    raise ValueError(f"unsafe or unknown CTA VIC remains: {vic}")
+        elif tag == 7:
+            raise ValueError("extended CTA capability block remains")
+        elif tag in (1, 4):
+            raise ValueError("video-only bridge still contains audio capability data")
+    for descriptor in dtds:
+        if not dtd_allowed(descriptor, limits):
+            raise ValueError("unsafe CTA detailed timing remains")
+
+
 def describe_timing(dtd: bytes) -> str:
     values = dtd_values(dtd)
     if values is None:
@@ -386,10 +520,46 @@ def describe_timing(dtd: bytes) -> str:
     return f"{width}x{height}@{refresh:.3f} ({clock_hz / 1_000_000:.3f} MHz)"
 
 
+def write_manifest(
+    path: Path, source: bytes, output: bytes, limits: Limits, identity_mode: str
+) -> None:
+    source_identity = identity(source)
+    bridge_identity = identity(output)
+    manifest = {
+        "schema": "hdmirxtest-edid-audit-v1",
+        "identity_mode": identity_mode,
+        "source_sha256": hashlib.sha256(source).hexdigest(),
+        "bridge_sha256": hashlib.sha256(output).hexdigest(),
+        "source_size": len(source),
+        "bridge_size": len(output),
+        "source_identity": source_identity,
+        "bridge_identity": bridge_identity,
+        "identity_bytes_preserved": output[8:16] == source[8:16],
+        "ceiling": {
+            "width": limits.width,
+            "height": limits.height,
+            "refresh_hz": limits.refresh,
+            "pixel_clock_hz": limits.pixel_clock_hz,
+        },
+        "signal_policy": "RGB 8-bit SDR, fixed refresh",
+        "not_advertised": [
+            "audio", "DSC", "FRL", "HDR", "VRR/FreeSync",
+            "YCbCr", "deep colour", "unknown timing extensions"
+        ],
+        "preferred_timing": describe_timing(output[54:72]),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--check", type=Path)
+    parser.add_argument("--source", type=Path, help="source EDID for clone-identity audit")
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--identity-mode", choices=("clone", "isolated"), default="clone")
     parser.add_argument("--max-width", type=int, default=1920)
     parser.add_argument("--max-height", type=int, default=1080)
     parser.add_argument("--max-refresh", type=float, default=240.0)
@@ -397,9 +567,32 @@ def main() -> int:
     args = parser.parse_args()
 
     limits = Limits(args.max_width, args.max_height, args.max_refresh, args.max_pixel_clock)
-    output, base_count, cta_count = build_clone(args.input.read_bytes(), limits)
+
+    if args.check:
+        if args.input or args.output or args.manifest:
+            parser.error("--check cannot be combined with --input, --output or --manifest")
+        data = args.check.read_bytes()
+        source = args.source.read_bytes() if args.source else None
+        if source is not None:
+            validate_source(source)
+        audit_clone(data, limits, source, args.identity_mode)
+        print(f"safe_bridge={args.check}")
+        print(f"preferred={describe_timing(data[54:72])}")
+        ident = identity(data)
+        print(f"identity={ident['manufacturer']} product={ident['product_code']} name={ident['monitor_name']}")
+        print("colour=RGB-8-bit checksums=valid")
+        return 0
+
+    if not args.input or not args.output:
+        parser.error("--input and --output are required when not using --check")
+
+    source = args.input.read_bytes()
+    output, base_count, cta_count = build_clone(source, limits, args.identity_mode)
+    audit_clone(output, limits, source if args.identity_mode == "clone" else None, args.identity_mode)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(output)
+    if args.manifest:
+        write_manifest(args.manifest, source, output, limits, args.identity_mode)
 
     preferred = describe_timing(output[54:72])
     print(f"source={args.input}")
@@ -407,6 +600,8 @@ def main() -> int:
     print(f"ceiling={limits.width}x{limits.height}@{limits.refresh:g} RGB 8-bit SDR")
     print(f"preferred={preferred}")
     print(f"safe_detailed_timings={base_count + cta_count}")
+    ident = identity(output)
+    print(f"identity={ident['manufacturer']} product={ident['product_code']} name={ident['monitor_name']}")
     print("checksums=valid size=256")
     return 0
 
