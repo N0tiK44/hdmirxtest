@@ -1,62 +1,29 @@
-HDMIRXTEST V1.2.0 — START HERE
-===============================
+HDMIRXTEST V1.1.3 — START HERE
+================================
 
-All project commands run on the Orange Pi as your normal user.
-Windows only selects an ordinary extended-display mode.
+All project commands run on the Orange Pi.
+Windows only selects the detected display mode in the normal Display Settings GUI.
 
-ONE-TIME UPDATE
----------------
+Repository:
+https://github.com/N0tiK44/hdmirxtest
+
+After V1.1.3 is uploaded to main, run on the Orange Pi:
 
     cd ~/src/hdmirxtest
-    bash scripts/pi-cycle.sh sync
+    bash scripts/pi-cycle.sh prepare240
 
-
-CLONE THE REAL MONITOR EDID
----------------------------
-
-Connect the target monitor to Orange Pi HDMI-TX, then run:
-
-    bash scripts/pi-cycle.sh preparemonitor
-
-This reads the monitor EDID automatically and installs a safe HDMI-RX clone.
-The clone exposes only modes proven to be no greater than 1920x1080 at 240 Hz
-and advertises RGB 8-bit SDR. Exact EDID read-back is required before success.
-
-Reconnect or disable/re-enable the Windows-to-Pi HDMI display once. Use Extend,
-not Duplicate, and select any refresh rate Windows lists.
-
-
-FAST AUTOMATIC VIDEO
---------------------
+Physically reconnect the Windows-source HDMI cable, use extended-display mode,
+and select 1920x1080 at 240 Hz. Then run on the Orange Pi:
 
     bash scripts/pi-cycle.sh 240
 
-The `240` command is retained for compatibility, but now means automatic live
-mode. It reads the current HDMI-RX timing, selects the matching downstream
-mode, and safely restarts/rematches after a Windows refresh-rate change.
+Result:
 
-Repeat starts do not fetch Git, clean-build, probe separately, or collect a
-pre-run dump. If source files changed, only the required incremental build runs.
+    ~/hdmirxtest-240-latest.tar.gz
 
-Native zero-copy paths:
-
-    Windows RGB 8-bit -> HDMI-RX BGR3 -> DRM RGB888
-    YUV444 fallback   -> HDMI-RX NV24 -> DRM NV24
-
-Neither path performs CPU conversion, framebuffer copies, or GStreamer queues.
-
-
-DIAGNOSTIC COMMANDS
--------------------
-
-    bash scripts/pi-cycle.sh diagnostic
-    bash scripts/pi-cycle.sh baseline
-    bash scripts/pi-cycle.sh debug
-
-
-EMERGENCY EDID RESTORE
-----------------------
+Emergency EDID rollback:
 
     bash scripts/pi-cycle.sh restoreedid
 
-Then reconnect the Windows-source HDMI cable.
+V1.1.3 accepts the actual 240-Hz RGB input as native V4L2 BGR3 and scans it
+out as DRM RGB888/RG24 without a conversion, CPU copy, or extra queue.

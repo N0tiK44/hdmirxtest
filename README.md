@@ -1,50 +1,6 @@
-# hdmirxtest — RK3588 HDMI ultra-low-latency passthrough — V1.2.0
+# hdmirxtest — RK3588 HDMI ultra-low-latency passthrough — V1.1.3
 
-V1.2.0 adds a monitor-cloning bridge EDID, automatic input/output refresh
-matching, source-change restart, a hard 1920x1080/240-Hz ceiling, and a fast
-live start that does not fetch Git, clean-build, or collect a pre-run dump.
-
-## V1.2.0 quick workflow
-
-Connect the real monitor to Orange Pi HDMI-TX, then run once whenever that
-monitor changes:
-
-```bash
-bash scripts/pi-cycle.sh preparemonitor
-```
-
-Reconnect or disable/re-enable the Windows-to-HDMI-RX source so Windows reads
-the new EDID. Start passthrough with:
-
-```bash
-bash scripts/pi-cycle.sh 240
-```
-
-Despite the legacy command name, `240` is now an alias for the automatic live
-path. It reads the current HDMI-RX timing and selects the matching downstream
-mode at any advertised rate up to the hard ceiling. If Windows changes timing,
-the wrapper tears down safely and rematches automatically.
-
-The fast path performs only an incremental build when source code changed. It
-does not contact Git or collect large diagnostics before video. Use this when
-an update is wanted:
-
-```bash
-bash scripts/pi-cycle.sh sync
-```
-
-Or update and then run in one invocation:
-
-```bash
-SYNC=1 bash scripts/pi-cycle.sh 240
-```
-
-The generated EDID preserves only timings that can be proved to be no greater
-than 1920x1080 at 240 Hz, promotes the highest safe detailed timing, advertises
-RGB 8-bit SDR, and removes YCbCr/deep-colour/HDR/VRR and unknown timing-bearing
-blocks. Unsupported or unknown timings fail closed instead of being guessed.
-
-V1.2.0 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath, keeps the verified reversible 1080p240 bridge EDID, and retains the native RGB capture path proven by the first real 240-Hz run.
+V1.1.3 preserves the V1.0 zero-copy Orange Pi 5 Plus datapath, keeps the verified reversible 1080p240 bridge EDID, and adds the native RGB capture path proven necessary by the first real 240-Hz run.
 
 The critical path is still:
 
@@ -99,14 +55,14 @@ mkdir -p ~/src && cd ~/src
 git clone https://github.com/N0tiK44/hdmirxtest.git
 cd hdmirxtest
 bash scripts/install-deps.sh
-bash scripts/pi-cycle.sh preparemonitor
+bash scripts/pi-cycle.sh baseline
 ```
 
-Reconnect the Windows HDMI source once. For later runs, you only need:
+For later runs, you only need:
 
 ```bash
 cd ~/src/hdmirxtest
-bash scripts/pi-cycle.sh 240
+bash scripts/pi-cycle.sh baseline
 ```
 
 For debug collection without running passthrough:
@@ -126,16 +82,16 @@ Each mode uses its own filename. A compatibility copy is also kept at `~/hdmirxt
 
 ## Routine commands on the Pi
 
-Fast automatic live video:
+Known-good baseline:
 
 ```bash
-bash scripts/pi-cycle.sh 240
+bash scripts/pi-cycle.sh baseline
 ```
 
-Automatically clone the connected monitor EDID with the bridge ceiling:
+Prepare EDID for 240-Hz negotiation:
 
 ```bash
-bash scripts/pi-cycle.sh preparemonitor
+bash scripts/pi-cycle.sh prepare240
 ```
 
 Restore the original RX EDID:
@@ -150,10 +106,10 @@ Probe only:
 bash scripts/pi-cycle.sh probe240
 ```
 
-Full automatic diagnostic:
+Full 240-Hz diagnostic, but only after the input gate passes:
 
 ```bash
-bash scripts/pi-cycle.sh diagnostic
+bash scripts/pi-cycle.sh 240
 ```
 
 The old command remains compatible:
@@ -164,12 +120,9 @@ bash scripts/pi-update-and-diagnose.sh
 
 It now delegates to `pi-cycle.sh baseline`.
 
-## Simplest Pi-only automatic workflow
+## Simplest Pi-only 240-Hz workflow
 
-Run `preparemonitor` on the Orange Pi, physically reconnect the Windows-source
-HDMI cable so it rereads the EDID, select any offered refresh rate, then run
-`240` on the Orange Pi. No Windows repository, PowerShell controller, or `.cmd`
-file is required.
+Run `prepare240` on the Orange Pi, physically reconnect the Windows-source HDMI cable so it rereads the EDID, select 240 Hz in the ordinary Windows display GUI, then run `240` on the Orange Pi. No Windows repository, PowerShell controller, or `.cmd` file is required.
 
 ## Why the 240-Hz experiment matters
 
@@ -183,8 +136,7 @@ Windows duplicate mode merges/intersects display behavior and can misleadingly e
 
 The script refuses to proceed without a backup, validates the EDID checksums/timings, and verifies exact read-back after programming. It does not fall back to the generic `hdmi-4k-600mhz` preset because that preset does not advertise the required 1080p240 detailed timing.
 
-`preparemonitor` supersedes the fixed profile for ordinary use. The fixed
-`prepare240` mode remains available as a known Zowie recovery/diagnostic profile.
+Do not select a source refresh above 240 Hz even if the downstream EDID advertises one.
 
 ## Safety rules
 
@@ -193,8 +145,7 @@ The script refuses to proceed without a backup, validates the EDID checksums/tim
 - only the previously displayed buffer is returned after the next KMS completion
 - do not add GStreamer, CPU conversion, framebuffer copies, or a deliberate extra queue
 - do not reintroduce the retired frame-dropping experiment
-- each newly cloned monitor and timing remains hardware-dependent and must be
-  verified; the known Zowie 1080p239.96 BGR3 path is already proven
+- the 240-Hz path is experimental until the debug data proves each stage
 
 ## Documentation
 
@@ -205,4 +156,3 @@ The script refuses to proceed without a backup, validates the EDID checksums/tim
 - [1080p240 experiment](docs/240HZ_EXPERIMENT.md)
 - [Research findings](docs/RESEARCH_FINDINGS.md)
 - [Roadmap](docs/ROADMAP.md)
-- [V1.2.0 changelog](docs/V1.2_CHANGELOG.md)

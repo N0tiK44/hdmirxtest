@@ -28,13 +28,9 @@
 
 #define MAX_BUFS 8
 #define MAX_SAMPLES 65536
-#define MAX_INPUT_WIDTH 1920U
-#define MAX_INPUT_HEIGHT 1080U
-#define MAX_INPUT_REFRESH_MILLIHZ 240250U
-#define EXIT_SOURCE_CHANGED 75
 
 /*
- * RK3588 HDMI PASSTHROUGH V1.2.0
+ * RK3588 HDMI PASSTHROUGH V1.1.3
  *
  * Current proven architecture:
  *
@@ -625,7 +621,6 @@ struct opts {
     bool verbose;
     bool phase_profile;
     bool window_profile;
-    bool auto_refresh;
     uint32_t target_refresh_millihz;
 
     const char* csv_path;
@@ -688,65 +683,6 @@ static int xioctl(int fd, unsigned long req, void* arg)
     } while (r < 0 && errno == EINTR);
 
     return r;
-}
-
-
-static int query_input_refresh_millihz(
-    int vfd,
-    uint32_t* width,
-    uint32_t* height,
-    uint32_t* refresh_millihz
-)
-{
-    struct v4l2_dv_timings timings;
-
-    memset(&timings, 0, sizeof(timings));
-
-    if (xioctl(vfd, VIDIOC_QUERY_DV_TIMINGS, &timings) < 0)
-        return -1;
-
-    if (timings.type != V4L2_DV_BT_656_1120) {
-        errno = ENOTSUP;
-        return -1;
-    }
-
-    const struct v4l2_bt_timings* bt = &timings.bt;
-    uint64_t htotal =
-        (uint64_t)bt->width +
-        bt->hfrontporch +
-        bt->hsync +
-        bt->hbackporch;
-    uint64_t vtotal =
-        (uint64_t)bt->height +
-        bt->vfrontporch +
-        bt->vsync +
-        bt->vbackporch;
-
-    if (bt->interlaced) {
-        vtotal +=
-            bt->il_vfrontporch +
-            bt->il_vsync +
-            bt->il_vbackporch;
-    }
-
-    if (!bt->pixelclock || !htotal || !vtotal) {
-        errno = ERANGE;
-        return -1;
-    }
-
-    uint64_t denominator = htotal * vtotal;
-    uint64_t numerator = bt->pixelclock * 1000ULL;
-    uint64_t rounded = (numerator + denominator / 2ULL) / denominator;
-
-    if (rounded > UINT32_MAX) {
-        errno = ERANGE;
-        return -1;
-    }
-
-    *width = bt->width;
-    *height = bt->height;
-    *refresh_millihz = (uint32_t)rounded;
-    return 0;
 }
 
 
@@ -1489,7 +1425,6 @@ static void usage(
         "  --phase-profile          record CRTC/vblank phase data\n"
         "  --window-profile         classify capture-ready/OUT-fence ordering\n"
         "  --target-refresh-millihz N  select a matching EDID mode (59940)\n"
-        "  --auto-refresh          match output timing to live HDMI-RX input\n"
         "  --csv PATH               timing CSV (default /tmp/hdmirx-lowlat.csv)\n"
         "  -v, --verbose            extra per-frame output\n",
 
@@ -1536,9 +1471,6 @@ int main(
             false,
 
         .window_profile =
-            false,
-
-        .auto_refresh =
             false,
 
         .target_refresh_millihz =
@@ -1627,13 +1559,6 @@ int main(
                 required_argument,
                 0,
                 11
-            },
-
-            {
-                "auto-refresh",
-                no_argument,
-                0,
-                12
             },
 
             {
@@ -1751,11 +1676,6 @@ int main(
             }
             break;
 
-        case 12:
-            o.auto_refresh =
-                true;
-            break;
-
         case 'v':
             o.verbose =
                 true;
@@ -1777,22 +1697,15 @@ int main(
         o.num_buffers > MAX_BUFS ||
         o.seconds < 1 ||
         (o.window_profile && !o.phase_profile) ||
-        (o.auto_refresh && o.target_refresh_millihz) ||
         (o.target_refresh_millihz &&
             (o.target_refresh_millihz < 1000U ||
-             o.target_refresh_millihz > MAX_INPUT_REFRESH_MILLIHZ))) {
+             o.target_refresh_millihz > 1000000U))) {
 
         usage(argv[0]);
 
         if (o.window_profile && !o.phase_profile) {
             fprintf(stderr,
                 "--window-profile requires --phase-profile for auditable data.\n");
-        }
-
-
-        if (o.auto_refresh && o.target_refresh_millihz) {
-            fprintf(stderr,
-                "--auto-refresh and --target-refresh-millihz are mutually exclusive.\n");
         }
 
         return 2;
@@ -1956,21 +1869,6 @@ int main(
     }
 
 
-    if (o.auto_refresh) {
-        struct v4l2_event_subscription sub;
-
-        memset(&sub, 0, sizeof(sub));
-        sub.type = V4L2_EVENT_SOURCE_CHANGE;
-
-        if (xioctl(vfd, VIDIOC_SUBSCRIBE_EVENT, &sub) < 0 &&
-            errno != EINVAL && errno != ENOTTY) {
-
-            perror("VIDIOC_SUBSCRIBE_EVENT source change");
-            goto out;
-        }
-    }
-
-
     struct v4l2_format fmt;
 
     memset(
@@ -2012,74 +1910,6 @@ int main(
 
     uint32_t h =
         fmt.fmt.pix_mp.height;
-
-
-    if (w > MAX_INPUT_WIDTH || h > MAX_INPUT_HEIGHT) {
-        fprintf(
-            stderr,
-            "Input %ux%u exceeds the hard bridge ceiling of %ux%u.\n",
-            w,
-            h,
-            MAX_INPUT_WIDTH,
-            MAX_INPUT_HEIGHT
-        );
-
-        goto out;
-    }
-
-
-    if (o.auto_refresh) {
-        uint32_t timing_width = 0;
-        uint32_t timing_height = 0;
-        uint32_t input_refresh_millihz = 0;
-
-        if (query_input_refresh_millihz(
-                vfd,
-                &timing_width,
-                &timing_height,
-                &input_refresh_millihz) < 0) {
-
-            perror("VIDIOC_QUERY_DV_TIMINGS for auto refresh");
-            goto out;
-        }
-
-        if (timing_width != w || timing_height != h) {
-            fprintf(
-                stderr,
-                "HDMI-RX format/timing mismatch: format=%ux%u timing=%ux%u. "
-                "Wait for source lock and retry.\n",
-                w,
-                h,
-                timing_width,
-                timing_height
-            );
-
-            goto out;
-        }
-
-        if (input_refresh_millihz > MAX_INPUT_REFRESH_MILLIHZ) {
-            fprintf(
-                stderr,
-                "Input refresh %u.%03u Hz exceeds the hard 240-Hz ceiling.\n",
-                input_refresh_millihz / 1000U,
-                input_refresh_millihz % 1000U
-            );
-
-            goto out;
-        }
-
-        o.target_refresh_millihz = input_refresh_millihz;
-
-        fprintf(
-            stderr,
-            "Auto timing: HDMI-RX %ux%u at %u.%03u Hz; selecting the "
-            "closest identical-resolution downstream mode.\n",
-            timing_width,
-            timing_height,
-            input_refresh_millihz / 1000U,
-            input_refresh_millihz % 1000U
-        );
-    }
 
     uint32_t bpl =
         fmt.fmt.pix_mp
@@ -2532,18 +2362,8 @@ int main(
     }
 
 
-    uint32_t selected_output_width =
-        o.target_refresh_millihz
-        ? target_mode.hdisplay
-        : crtc->width;
-    uint32_t selected_output_height =
-        o.target_refresh_millihz
-        ? target_mode.vdisplay
-        : crtc->height;
-
-
-    if (selected_output_width != w ||
-        selected_output_height != h) {
+    if (crtc->width != w ||
+        crtc->height != h) {
 
         fprintf(
             stderr,
@@ -2553,8 +2373,8 @@ int main(
             "the latency build.\n",
             w,
             h,
-            selected_output_width,
-            selected_output_height
+            crtc->width,
+            crtc->height
         );
 
         goto out;
@@ -3105,7 +2925,6 @@ int main(
      * Measurements depend on trustworthy exit codes.
      */
     bool run_failed = false;
-    bool source_changed = false;
 
 
     while (!g_stop) {
@@ -3171,24 +2990,6 @@ int main(
         }
 
 
-        if (vp.revents & POLLPRI) {
-            struct v4l2_event event;
-
-            memset(&event, 0, sizeof(event));
-
-            if (xioctl(vfd, VIDIOC_DQEVENT, &event) == 0 &&
-                event.type == V4L2_EVENT_SOURCE_CHANGE) {
-
-                fprintf(
-                    stderr,
-                    "HDMI-RX source timing changed; restarting auto-match.\n"
-                );
-                source_changed = true;
-                break;
-            }
-        }
-
-
         if (vp.revents & (POLLERR | POLLHUP | POLLNVAL)) {
             fprintf(
                 stderr,
@@ -3217,15 +3018,6 @@ int main(
 
             if (errno == EAGAIN)
                 continue;
-
-            if (errno == EPIPE && o.auto_refresh) {
-                fprintf(
-                    stderr,
-                    "HDMI-RX timing changed during dequeue; restarting auto-match.\n"
-                );
-                source_changed = true;
-                break;
-            }
 
             perror(
                 "VIDIOC_DQBUF"
@@ -3950,9 +3742,10 @@ int main(
 
 
     rc =
-        source_changed
-        ? EXIT_SOURCE_CHANGED
-        : ((!run_failed && frames > 0) ? 0 : 1);
+        (!run_failed &&
+            frames > 0)
+        ? 0
+        : 1;
 
 
 out:

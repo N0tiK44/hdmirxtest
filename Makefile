@@ -16,7 +16,6 @@ SHELL_SCRIPTS := \
 	scripts/collect-debug.sh \
 	scripts/probe-240.sh \
 	scripts/prepare-240.sh \
-	scripts/prepare-monitor-edid.sh \
 	scripts/restore-rx-edid.sh \
 	scripts/install-deps.sh
 
@@ -29,9 +28,8 @@ $(TARGET): $(SRC)
 
 check:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fsyntax-only $(SRC)
-	python3 -m py_compile tools/analyze.py tools/build-240-edid.py tools/clone-monitor-edid.py
+	python3 -m py_compile tools/analyze.py tools/build-240-edid.py
 	python3 tools/build-240-edid.py --check edid/rk1080p240.bin
-	python3 tools/clone-monitor-edid.py --input edid/zowie-xl2546x-captured.bin --output /tmp/hdmirxtest-clone-check.bin
 	bash -n $(SHELL_SCRIPTS)
 
 clean:
