@@ -1,0 +1,31 @@
+HDMIRXTEST V1.0
+================
+
+FIRST SETUP
+
+1. Connect the target monitor to Orange Pi HDMI-TX.
+2. Physically unplug Windows from Orange Pi HDMI-RX.
+3. Run:
+
+       bash setup.sh
+
+4. Reconnect Windows to HDMI-RX after setup succeeds.
+
+NORMAL USE
+
+       bash PiCycle.sh
+
+Press Ctrl+C to stop video and return to the terminal.
+
+NEW MONITOR
+
+1. Press Ctrl+C.
+2. Unplug Windows from HDMI-RX.
+3. Connect the replacement monitor to HDMI-TX.
+4. Run: bash PiCycle.sh setup
+5. Reconnect Windows.
+6. Run: bash PiCycle.sh
+
+DEBUG SNAPSHOT
+
+       bash PiCycle.sh debug
