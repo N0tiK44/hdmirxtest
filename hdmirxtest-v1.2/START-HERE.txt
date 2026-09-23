@@ -1,0 +1,44 @@
+HDMIRXTEST V1.2
+================
+
+FIRST PRIORITY: PROVE HDMI-TX ON EVERY DISPLAY
+
+Do this once while the Orange Pi is connected to the working Zowie display:
+
+       bash TxTest.sh install
+
+Animated colour bars should appear for two minutes. The automatic test remains
+enabled for every boot. To test another display:
+
+1. Power off the Orange Pi.
+2. Leave HDMI-RX completely empty.
+3. Connect Orange Pi HDMI-TX directly to the TV/monitor.
+4. Select that HDMI input and power on the Orange Pi.
+5. Wait up to 60 seconds for Linux to boot and show animated colour bars.
+
+The test needs no network, keyboard or HDMI-RX device. It discovers the HDMI
+connector, CRTC and primary plane again on each boot. It chooses a progressive
+mode actually advertised by that display, preferring 1080p60 then 1080p50,
+720p60 and 720p50.
+
+After testing all displays, reconnect to the Zowie and run:
+
+       bash TxTest.sh status
+       bash TxTest.sh results
+       bash TxTest.sh disable
+
+The result archive is ~/hdmirxtest-tx-latest.tar.gz.
+
+DO NOT RUN HDMI-RX SETUP YET
+
+Do not run setup.sh or connect a source to HDMI-RX until HDMI-TX colour bars
+have been confirmed on the Zowie, LG and Samsung.
+
+LATER: NORMAL BRIDGE USE
+
+       bash setup.sh
+       bash PiCycle.sh
+
+Press Ctrl+C to stop bridge video and return to the terminal. Version 1.2 uses
+automatic DRM connector and plane selection by default; numeric IDs are not
+hardcoded.
