@@ -1,0 +1,44 @@
+HDMIRXTEST V1.1.2 VALIDATION
+============================
+
+Custom EDID source
+------------------
+The downstream Zowie XL2546X EDID was recovered from the DRM connector data in
+the supplied Orange Pi debug archive. The recovered source is exactly 256 bytes
+and both 128-byte checksums are valid.
+
+Generated bridge profile
+------------------------
+File: edid/rk1080p240.bin
+Size: 256 bytes
+SHA-256: 5ab4e8f07e38c6786e03f043905318601163f5fd29d2f441cc2adbc6c9d23ae6
+Block 0 checksum: valid
+Block 1 checksum: valid
+Preferred: 1920x1080 at 239.964 Hz, 571.000 MHz
+First fallback: 1920x1080 at 60.000 Hz, 148.500 MHz
+HDMI Forum capability block: present, 600-MHz class
+
+Static checks
+-------------
+- all Bash scripts pass `bash -n`
+- both Python tools pass bytecode compilation
+- the custom EDID passes its independent check mode
+- the three bundled EDIDs are exactly 256 bytes and have valid block checksums
+
+Mock hardware lifecycle
+-----------------------
+The prepare and restore scripts were run against a mock v4l2-ctl device:
+
+- stock RK-UHD was backed up
+- permanent original restore point was created
+- custom EDID was written
+- exact custom read-back comparison passed
+- restore command selected the permanent original
+- exact stock RK-UHD read-back comparison passed
+
+Hardware status
+---------------
+The custom EDID has not yet been electrically tested on the Orange Pi HDMI-RX.
+V1.1.2 proves that negotiation data is internally valid and safely reversible;
+the next returned prepare/probe archives must prove whether the RK3588 receiver
+controller and driver lock to and sustain 1080p240.

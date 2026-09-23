@@ -1,0 +1,14 @@
+HDMIRXTEST V1.2.3 — UPDATE THE GITHUB REPOSITORY
+================================================
+
+Upload the contents of this package over the repository root, preserving the
+folders, and commit them to main with this message:
+
+    V1.2.3 persistent systemd bridge and fast timing relock
+
+This release adds new files under scripts/, packaging/systemd/ and docs/.
+Upload the whole package rather than selecting only older functional files.
+
+After main is updated, freshly clone it on the Orange Pi. Do not run the project
+on Windows. Before `pi-cycle.sh setup`, physically disconnect Windows from
+HDMI-RX and leave only the target monitor connected to HDMI-TX.

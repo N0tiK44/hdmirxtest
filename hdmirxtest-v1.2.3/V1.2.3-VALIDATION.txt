@@ -1,0 +1,34 @@
+V1.2.3 VALIDATION
+=================
+
+Completed in the packaging environment:
+
+- Bash syntax validation for every scripts/*.sh file and the OpenRC loader
+- Python syntax validation for every tools/*.py file
+- clone-mode generation from the captured Zowie XL2546X source EDID
+- exact identity audit against the source EDID
+- valid 256-byte bridge EDID with valid checksums
+- preferred 1920x1080 at 239.964 Hz / 571 MHz timing retained
+- boot loader transaction test with a simulated V4L2 set/get EDID device
+- exact boot-loader write/read-back comparison passed
+- systemd units inspected with the installed executable paths and environment
+  file produced by setup
+- service scripts are executable; systemd unit files are mode 0644
+- ZIP contents and compressed-data integrity are checked during packaging
+
+The packaging container does not contain libdrm development headers and its
+restricted package catalog cannot supply `libdrm-dev`, so it cannot compile the
+C source here. The modified cleanup branch is deliberately narrow: on a
+V4L2 source-change exit it atomically disables the scanout plane but leaves the
+current connector/CRTC mode active; ordinary exit still uses the previously
+validated original-mode restoration path. `make check && make` is mandatory on
+the Orange Pi before service start and is included in the install procedure.
+
+Required Orange Pi validation:
+
+1. Run `make check && make -j"$(nproc)"` on Ubuntu 24.04.
+2. Run setup with HDMI-RX physically unplugged and confirm exact read-back.
+3. Reconnect HDMI-RX and run `bash scripts/pi-cycle.sh service-start`.
+4. Cycle the advertised Windows refresh rates and confirm automatic recovery.
+5. Leave the service running longer than 120 seconds.
+6. Reboot the Pi and verify EDID/passthrough systemd services are active.

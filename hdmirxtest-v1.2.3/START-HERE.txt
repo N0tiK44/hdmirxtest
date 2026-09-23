@@ -1,0 +1,60 @@
+HDMIRXTEST V1.2.3 — PERSISTENT MONITOR IDENTITY BRIDGE
+================================
+
+PHYSICAL SETUP BEFORE RUNNING ANY EDID COMMAND
+----------------------------------------------
+
+    HDMI-TX -> target monitor: CONNECTED
+    Windows/GPU -> HDMI-RX:    PHYSICALLY UNPLUGGED
+
+Do not change HDMI-RX EDID while Windows is connected. V1.2.3 checks for an
+active HDMI-RX source and refuses the write if one is detected.
+
+
+ONE-TIME BRIDGE SETUP
+---------------------
+
+    cd /home/visionseek/src/hdmirxtest
+    bash scripts/pi-cycle.sh setup
+
+Setup reads the EDID only from the monitor connected to HDMI-TX and computes:
+
+    downstream monitor modes
+        intersected with RK3588-compatible modes
+        capped at 1920x1080
+        capped at 240 Hz
+        capped at 600 MHz pixel clock
+        fixed RGB 8-bit SDR
+
+DSC, FRL, HDR, VRR/FreeSync, YCbCr, deep colour, 4K modes, >240-Hz modes and
+unknown timing blocks are not exposed to Windows. The bridge uses its own
+real downstream manufacturer/product/serial/name identity. Unsafe timing and
+signal capabilities are filtered without replacing the monitor identity.
+
+On Ubuntu/systemd, setup installs and enables both the verified boot-time EDID
+loader and persistent passthrough service. On Alpine/OpenRC it installs the
+early-boot EDID loader.
+
+
+CONNECT WINDOWS AND START VIDEO
+-------------------------------
+
+Only after setup reports exact read-back success, connect the Windows HDMI
+cable to HDMI-RX. Use Extend mode and select any mode Windows offers.
+
+    bash scripts/pi-cycle.sh service-start
+
+The systemd service reads the actual HDMI-RX timing, matches HDMI-TX
+automatically, survives SSH logout and starts at later boots. Use
+`bash scripts/pi-cycle.sh 240` for a continuous foreground run instead.
+
+
+SAFE RECOVERY
+-------------
+
+First physically unplug Windows from HDMI-RX, then run:
+
+    bash scripts/pi-cycle.sh restoreedid
+
+This installs an audited RGB 8-bit 1080p60 recovery profile. It never restores
+the old stock RK-UHD EDID or an unaudited historical backup.

@@ -1,0 +1,29 @@
+V1.2.2 VALIDATION
+=================
+
+Completed in the packaging environment:
+
+- Python syntax validation for clone-monitor-edid.py
+- Bash syntax validation for every scripts/*.sh file
+- generated a clone-mode EDID from the captured Zowie XL2546X EDID
+- verified all generated EDID checksums and the 256-byte/two-block contract
+- verified exact preservation of manufacturer/product/numeric serial bytes
+- verified preservation of ZOWIE XL2546X monitor-name and textual-serial fields
+- verified preferred 1920x1080 at 239.964 Hz / 571 MHz detailed timing
+- verified RGB 8-bit ceiling audit
+- generated and audited the separate RKP 1080p60 emergency profile
+- generated the SHA-256 identity/capability audit manifest
+
+The full C build could not run in the packaging container because its libdrm
+development headers (xf86drm.h) are not installed. The passthrough C source is
+unchanged from V1.2.1; scripts/install-deps.sh installs the required headers on
+the Orange Pi before building.
+
+Hardware validation still required on the Orange Pi:
+
+1. HDMI-TX monitor connected; HDMI-RX source physically disconnected.
+2. Run `bash scripts/pi-cycle.sh setup`.
+3. Confirm exact EDID write/read-back verification passes.
+4. Reconnect HDMI-RX and let Windows enumerate the cloned monitor identity.
+5. Run `bash scripts/pi-cycle.sh 240` and verify sustained native BGR3/RGB888
+   or NV24 zero-copy passthrough at the selected accepted timing.

@@ -1,0 +1,18 @@
+[Unit]
+Description=Persistent RK3588 HDMI-RX to HDMI-TX zero-copy passthrough
+Requires=hdmirxtest-edid.service
+After=hdmirxtest-edid.service systemd-udev-settle.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/hdmirxtest
+ExecStart=/usr/local/libexec/hdmirxtest-service-run
+Restart=always
+RestartSec=250ms
+RestartPreventExitStatus=10
+KillSignal=SIGINT
+TimeoutStopSec=10s
+
+[Install]
+WantedBy=multi-user.target
