@@ -1,0 +1,45 @@
+HDMIRXTEST V1.4
+================
+
+FIRST PRIORITY: UNIVERSAL HDMI-TX
+
+HDMI-RX MUST STAY PHYSICALLY DISCONNECTED FOR THIS MILESTONE.
+
+INSTALL ON THE WORKING DISPLAY
+
+       bash TxTest.sh install
+
+V1.4 identifies the connected HDMI connector dynamically and tests distinct
+EDID-advertised timings instead of collapsing 59.94 Hz and 60.00 Hz together.
+It also records a heartbeat and pre/post state for every modeset attempt.
+
+TEST A TV OR MONITOR
+
+1. Let the current-display test finish.
+2. Run: sudo poweroff
+3. Leave HDMI-RX empty.
+4. Connect ONE Orange Pi HDMI-TX port directly to the target display.
+5. Select that display input and power on the Pi.
+6. Watch the display through the full mode sequence.
+7. Note whether any colour bars appear, even briefly.
+8. Power off and, if needed, repeat using the other physical HDMI-TX port.
+9. Reconnect the known-good Zowie and boot exactly once.
+
+COLLECT RESULTS
+
+       bash TxTest.sh status
+       bash TxTest.sh history
+       bash TxTest.sh results
+
+Archive:
+
+       ~/hdmirxtest-tx-history-latest.tar.gz
+
+MANUAL STANDALONE OUTPUT
+
+       bash TxTest.sh run
+
+This holds a safe auto-selected EDID mode until Ctrl+C.
+
+Do not run setup.sh and do not connect HDMI-RX until direct HDMI-TX has passed
+on the displays we care about.

@@ -1,0 +1,15 @@
+[Unit]
+Description=HDMIRXTEST v1.4 HDMI-TX-only offline display probe
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Conflicts=hdmirxtest-passthrough.service hdmirxtest-edid.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/hdmirxtest-tx-selftest
+ExecStart=/usr/local/libexec/hdmirxtest-tx-selftest-service
+TimeoutStartSec=600
+StandardInput=null
+
+[Install]
+WantedBy=multi-user.target
