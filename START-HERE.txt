@@ -1,0 +1,77 @@
+HDMIRXTEST V1.5
+================
+
+FIRST PRIORITY: UNIVERSAL HDMI-TX
+OFFLINE / LIVING-ROOM TEST WORKFLOW
+
+HDMI-RX MUST STAY PHYSICALLY DISCONNECTED FOR THIS MILESTONE.
+
+ONE-TIME SETUP IN THE OFFICE (XIAOMI CONNECTED)
+
+    bash TxTest.sh install
+
+This installs and enables the TX probe service, but ordinary boots remain idle.
+Nothing is tested until you deliberately arm one field test.
+
+WHEN YOU ARE READY TO MOVE THE PI TO THE TV
+
+    bash TxTest.sh field
+
+That command:
+  1. arms exactly ONE HDMI-TX test for the next boot;
+  2. cleanly powers the Orange Pi off.
+
+Then physically move the Pi to the living room.
+
+LIVING ROOM
+
+  1. Keep HDMI-RX completely empty.
+  2. Connect ONE Orange Pi HDMI-TX port directly to the TV.
+  3. Select that HDMI input on the TV.
+  4. Connect Orange Pi power.
+
+THAT IS ALL.
+
+No Ethernet is required.
+No SSH is required.
+No terminal is required.
+No keyboard is required.
+
+On boot the Pi automatically:
+  - waits for the TV connector;
+  - reads the TV's EDID;
+  - tries the supported safe timing matrix;
+  - stores pre/post diagnostics for every attempt;
+  - writes the final result to persistent storage;
+  - syncs the filesystem;
+  - powers the operating system off automatically.
+
+Expect roughly 3-5 minutes from power-on to automatic shutdown. During the test
+watch for colour bars, a stable picture, mode changes, brief sync, or anything
+other than No Signal. Those observations are useful too.
+
+BACK IN THE OFFICE
+
+Reconnect the Xiaomi and power the Pi normally. Because the field-test marker
+was consumed, it will NOT rerun the field test on the Xiaomi.
+
+Then collect everything with:
+
+    bash TxTest.sh status
+    bash TxTest.sh history
+    bash TxTest.sh results
+
+Archive:
+
+    ~/hdmirxtest-tx-history-latest.tar.gz
+
+Upload that archive to ChatGPT.
+
+OTHER COMMANDS
+
+    bash TxTest.sh arm       Arm next boot, but do not power off now
+    bash TxTest.sh disarm    Cancel an armed field test
+    bash TxTest.sh run       Manual standalone colour bars until Ctrl+C
+
+Do not run setup.sh and do not connect HDMI-RX until direct HDMI-TX has passed
+on the displays we care about.

@@ -1,0 +1,14 @@
+[Unit]
+Description=HDMIRXTEST v1.5 passive one-shot TV HDMI diagnostic
+After=systemd-udev-settle.service local-fs.target
+Wants=systemd-udev-settle.service
+ConditionPathExists=/var/lib/hdmirxtest/tv-diag/armed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/hdmirxtest-tv-diag-service
+TimeoutStartSec=180
+StandardInput=null
+
+[Install]
+WantedBy=multi-user.target

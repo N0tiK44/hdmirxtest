@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+description="HDMIRXTEST v1.5 passive one-shot TV HDMI diagnostic"
+command=/usr/local/libexec/hdmirxtest-tv-diag-service
+pidfile=/run/hdmirxtest-tv-diag.pid
+command_background=true
+output_log=/var/log/hdmirxtest-tv-diag.log
+error_log=/var/log/hdmirxtest-tv-diag.log
+
+depend() {
+    need localmount
+    after modules
+    before networking
+}
+
+start_pre() {
+    checkpath -d -m 0755 /run/hdmirxtest /var/lib/hdmirxtest/tv-diag/history
+}
