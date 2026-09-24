@@ -13,7 +13,7 @@ The final product has two modes:
 
 The immediate blocker is HDMI-TX universality. The previous v1.3 test produced a stable image on the Zowie monitor while some televisions reported **No Signal**. Before changing HDMI-RX again, v1.4 isolates the transmitter and makes the TX test substantially more deterministic.
 
-V1.4 keeps HDMI-RX completely unused during the TX milestone.
+V1.5 keeps HDMI-RX completely unused during the TX milestone.
 
 ## What changed in v1.4
 
@@ -33,7 +33,7 @@ V1.4 keeps HDMI-RX completely unused during the TX milestone.
 hdmirxtest/
 ├── README.md
 ├── hdmirxtest-v1.3/       # previous release retained for comparison
-└── hdmirxtest-v1.4/       # current TX-first release
+└── hdmirxtest-v1.5/       # current TX-first release
 ```
 
 ## Install v1.4 on the Orange Pi
@@ -42,7 +42,7 @@ hdmirxtest/
 cd /home/visionseek/src
 rm -rf -- hdmirxtest
 git clone https://github.com/N0tiK44/hdmirxtest.git
-cd hdmirxtest/hdmirxtest-v1.4
+cd hdmirxtest/hdmirxtest-v1.5
 cat VERSION
 bash TxTest.sh install
 ```
@@ -59,7 +59,7 @@ bash TxTest.sh install
 6. Return to the known-good Zowie once and collect the retained history.
 
 ```bash
-cd /home/visionseek/src/hdmirxtest/hdmirxtest-v1.4
+cd /home/visionseek/src/hdmirxtest/hdmirxtest-v1.5
 bash TxTest.sh status
 bash TxTest.sh history
 bash TxTest.sh results
